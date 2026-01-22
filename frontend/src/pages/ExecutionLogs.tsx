@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Clock, Search, Filter, Download, ChevronDown, MoreHorizontal, Loader2 } from "lucide-react";
+import { Clock, Search, Filter, Download, ChevronDown, MoreHorizontal, Loader2, Wifi } from "lucide-react";
 import { toast } from "sonner";
 import { logsApi, ExecutionLog, ApiError } from "../lib/api";
+import { useSSE, SSEEvent } from "../hooks/useSSE";
 
 export default function ExecutionLogs() {
   const [logs, setLogs] = useState<ExecutionLog[]>([]);
@@ -9,6 +10,11 @@ export default function ExecutionLogs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [exporting, setExporting] = useState(false);
+
+  const { connected, subscribe } = useSSE({
+    autoReconnect: true,
+    heartbeat: true,
+  });
 
   // 加载日志列表
   const loadLogs = async (search?: string, status?: string) => {
@@ -32,6 +38,24 @@ export default function ExecutionLogs() {
       setLoading(false);
     }
   };
+
+  // SSE 事件处理
+  useEffect(() => {
+    const unsubLog = subscribe('log_created', (event: SSEEvent) => {
+      console.log('[执行日志] 收到日志创建事件:', event.data);
+      // 刷新日志列表
+      loadLogs(searchTerm, statusFilter);
+      toast.info('新执行日志已添加', {
+        description: event.data.app_name
+          ? `${event.data.app_name} - ${event.data.status === 'completed' ? '成功' : '失败'}`
+          : undefined,
+      });
+    });
+
+    return () => {
+      unsubLog();
+    };
+  }, [subscribe, searchTerm, statusFilter]);
 
   // 初始加载
   useEffect(() => {
@@ -147,6 +171,19 @@ export default function ExecutionLogs() {
         <div className="flex items-center">
           <Clock className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">执行日志</h1>
+          {/* SSE 连接状态指示器 */}
+          <div className="ml-3 flex items-center">
+            <span
+              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                connected
+                  ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                  : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+              }`}
+            >
+              <Wifi className={`h-3 w-3 mr-1 ${connected ? "animate-pulse" : ""}`} />
+              {connected ? "实时" : "离线"}
+            </span>
+          </div>
         </div>
         <div className="flex items-center space-x-4">
           <div className="relative">

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Users, Plus, Edit, Trash2, Search, X, AlertCircle, Loader2 } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Search, X, AlertCircle, Loader2, Wifi } from "lucide-react";
 import { toast } from "sonner";
 import { accountsApi, Account, ApiError } from "../lib/api";
+import { useSSE, SSEEvent } from "../hooks/useSSE";
 
 export default function AccountManagement() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -20,6 +21,17 @@ export default function AccountManagement() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+
+  const {
+    // SSE 连接
+    connected,
+    connectionState,
+    subscribe
+  } = useSSE({
+    autoReconnect: true,
+    heartbeat: true,
+  });
 
   // 加载账号列表
   const loadAccounts = async (search?: string) => {
@@ -42,6 +54,33 @@ export default function AccountManagement() {
       setLoading(false);
     }
   };
+
+  // SSE 事件处理
+  useEffect(() => {
+    // 账号更新事件
+    const unsubAccount = subscribe('account_updated', (event: SSEEvent) => {
+      console.log('[账号管理] 收到账号更新事件:', event.data);
+      // 刷新账号列表
+      loadAccounts();
+      toast.info('账号状态已更新', {
+        description: event.data.changes?.recent_app
+          ? `最近应用: ${event.data.changes.recent_app}`
+          : undefined,
+      });
+    });
+
+    // 日志创建事件（可能影响账号状态）
+    const unsubLog = subscribe('log_created', (event: SSEEvent) => {
+      console.log('[账号管理] 收到日志创建事件:', event.data);
+      // 刷新账号列表（更新最近应用、状态等）
+      loadAccounts();
+    });
+
+    return () => {
+      unsubAccount();
+      unsubLog();
+    };
+  }, [subscribe]);
 
   // 初始加载
   useEffect(() => {
@@ -213,6 +252,19 @@ export default function AccountManagement() {
         <div className="flex items-center">
           <Users className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">账号管理</h1>
+          {/* SSE 连接状态指示器 */}
+          <div className="ml-3 flex items-center">
+            <span
+              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                connected
+                  ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                  : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+              }`}
+            >
+              <Wifi className={`h-3 w-3 mr-1 ${connected ? "animate-pulse" : ""}`} />
+              {connected ? "实时" : "离线"}
+            </span>
+          </div>
         </div>
         <div className="flex items-center space-x-4">
           <div className="relative">
@@ -266,6 +318,9 @@ export default function AccountManagement() {
                       任务控制
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      绑定任务数
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       操作
                     </th>
                   </tr>
@@ -304,6 +359,11 @@ export default function AccountManagement() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
                         {account.task_control}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
+                          {account.task_count || 0} 个任务
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
@@ -595,6 +655,9 @@ export default function AccountManagement() {
                 </p>
                 <p className="text-sm text-slate-700 dark:text-slate-300">
                   <span className="font-medium">主机IP:</span> {selectedAccount.host_ip}
+                </p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">
+                  <span className="font-medium">绑定任务数:</span> {selectedAccount.task_count || 0} 个
                 </p>
               </div>
             </div>

@@ -977,17 +977,13 @@ curl -X POST "http://localhost:8888/api/v1/tasks" \
 curl -X POST "http://localhost:8888/api/v1/webhook/execution-complete" \
   -H "Content-Type: application/json" \
   -d '{
-    "shadow_bot_account": "service_test_bot",
-    "app_name": "数据采集流程",
+    "shadow_bot_account": "tygj001",
+    "app_name": "云仓收藏_52-v1",
     "status": "completed",
-    "start_time": "2026-01-21T10:00:00Z",
-    "end_time": "2026-01-21T10:05:30Z",
-    "duration_seconds": 330.5,
-    "result_summary": {
-      "total_items": 150,
-      "success_items": 148,
-      "failed_items": 2
-    },
+    "start_time": "2026-01-22T9:00:00Z",
+    "end_time": "2026-01-22T9:35:30Z",
+    "duration_seconds": 2400,
+    "result_summary": {},
     "log_info": true,
     "screenshot": false
   }'

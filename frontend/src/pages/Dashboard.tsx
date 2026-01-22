@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Users, TerminalSquare, Clock, MoreHorizontal, Loader2 } from "lucide-react";
+import { LayoutDashboard, Users, TerminalSquare, Clock, MoreHorizontal, Loader2, Wifi } from "lucide-react";
 import { Link } from "react-router-dom";
 import { dashboardApi, logsApi, ExecutionLog, DashboardStats, PerformanceTrends, ApiError } from "../lib/api";
+import { useSSE, SSEEvent } from "../hooks/useSSE";
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [performance, setPerformance] = useState<PerformanceTrends | null>(null);
   const [recentLogs, setRecentLogs] = useState<ExecutionLog[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const { connected, subscribe } = useSSE({
+    autoReconnect: true,
+    heartbeat: true,
+  });
 
   // 加载仪表盘数据
   const loadDashboardData = async () => {
@@ -33,6 +39,31 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
+
+  // SSE 事件处理
+  useEffect(() => {
+    const unsubLog = subscribe('log_created', (event: SSEEvent) => {
+      console.log('[仪表盘] 收到日志创建事件:', event.data);
+      // 刷新仪表盘数据
+      loadDashboardData();
+    });
+
+    const unsubAccount = subscribe('account_updated', (event: SSEEvent) => {
+      console.log('[仪表盘] 收到账号更新事件:', event.data);
+      loadDashboardData();
+    });
+
+    const unsubTask = subscribe('task_updated', (event: SSEEvent) => {
+      console.log('[仪表盘] 收到任务更新事件:', event.data);
+      loadDashboardData();
+    });
+
+    return () => {
+      unsubLog();
+      unsubAccount();
+      unsubTask();
+    };
+  }, [subscribe]);
 
   useEffect(() => {
     loadDashboardData();
@@ -100,7 +131,22 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">仪表盘</h1>
+        <div className="flex items-center">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">仪表盘</h1>
+          {/* SSE 连接状态指示器 */}
+          <div className="ml-3 flex items-center">
+            <span
+              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                connected
+                  ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                  : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+              }`}
+            >
+              <Wifi className={`h-3 w-3 mr-1 ${connected ? "animate-pulse" : ""}`} />
+              {connected ? "实时" : "离线"}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Summary Cards */}

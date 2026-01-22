@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { TerminalSquare, Play, Square, Search, Settings, FileText, Calendar, Plus, X, AlertCircle, Trash2, Loader2 } from "lucide-react";
+import { TerminalSquare, Play, Square, Search, Settings, FileText, Calendar, Plus, X, AlertCircle, Trash2, Loader2, Wifi } from "lucide-react";
 import { toast } from "sonner";
 import { tasksApi, accountsApi, Task, Account, ApiError } from "../lib/api";
+import { useSSE, SSEEvent } from "../hooks/useSSE";
 
 export default function TaskControl() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -24,6 +25,11 @@ export default function TaskControl() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const { connected, subscribe } = useSSE({
+    autoReconnect: true,
+    heartbeat: true,
+  });
 
   // 加载任务列表
   const loadTasks = async (search?: string) => {
@@ -56,6 +62,27 @@ export default function TaskControl() {
       console.error('Failed to load accounts:', error);
     }
   };
+
+  // SSE 事件处理
+  useEffect(() => {
+    // 任务更新事件
+    const unsubTask = subscribe('task_updated', (event: SSEEvent) => {
+      console.log('[任务控制] 收到任务更新事件:', event.data);
+      loadTasks();
+    });
+
+    // 日志创建事件（可能影响任务状态）
+    const unsubLog = subscribe('log_created', (event: SSEEvent) => {
+      console.log('[任务控制] 收到日志创建事件:', event.data);
+      // 当有日志创建时，可能意味着关联的任务状态需要更新
+      loadTasks();
+    });
+
+    return () => {
+      unsubTask();
+      unsubLog();
+    };
+  }, [subscribe]);
 
   // 初始加载
   useEffect(() => {
@@ -292,6 +319,19 @@ export default function TaskControl() {
         <div className="flex items-center">
           <TerminalSquare className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">任务控制</h1>
+          {/* SSE 连接状态指示器 */}
+          <div className="ml-3 flex items-center">
+            <span
+              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                connected
+                  ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                  : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+              }`}
+            >
+              <Wifi className={`h-3 w-3 mr-1 ${connected ? "animate-pulse" : ""}`} />
+              {connected ? "实时" : "离线"}
+            </span>
+          </div>
         </div>
         <div className="flex items-center space-x-4">
           <div className="relative">

@@ -1,8 +1,8 @@
 # CLAUDE.md
 **Use Chinese to answer**
 **数据库在 /home/redballooon/Desktop/claude_code_projects/RPA-workbench/backend/app.db**
-
-
+**当用户需要更新修改到远程仓库的化，请执行本地的ssh git 命令的方式 将修改推送到 github 其ssh仓库地址是：git@github.com:redballoom/RPA-workbench.git  其http仓库地址是：https://github.com/redballoom/RPA-workbench.git**
+ 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
@@ -389,15 +389,6 @@ pnpm build
 8. **Testing**: Write tests for both frontend and backend
 9. **Documentation**: FastAPI auto-generates OpenAPI docs at `/docs`
 10. **Performance**: SQLite works well for small-medium datasets
-
-## Next Steps
-
-1. ✅ Frontend is complete
-2. 🔄 **Implement FastAPI backend with SQLite** per frontend/README.md specifications
-3. 🔄 Integrate frontend with backend API
-4. 🔄 Add authentication system
-5. 🔄 Add comprehensive tests
-6. 🔄 Deploy to production
 
 ## Available Resources
 
