@@ -130,7 +130,7 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
 
     async def get_recent_logs(self, limit: int = 10) -> List[ExecutionLog]:
         """
-        Get most recent logs
+        Get most recent logs ordered by end_time descending.
         """
         try:
             result = await self.db.execute(
@@ -197,13 +197,29 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
         Create a new execution log
         """
         try:
-            from datetime import datetime
+            from datetime import datetime, timedelta
 
             # Convert string to datetime if needed
+            # 假设传入的时间是北京时间 (UTC+8)，转换为 UTC 时间存储
             if isinstance(start_time, str):
-                start_time = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+                # 尝试解析时间字符串
+                start_time_str = start_time.replace("Z", "+00:00")
+                try:
+                    start_time = datetime.fromisoformat(start_time_str)
+                except ValueError:
+                    # 尝试简单格式 (YYYY-MM-DD HH:MM:SS)
+                    start_time = datetime.strptime(start_time[:19], "%Y-%m-%d %H:%M:%S")
+                # 北京时间转 UTC (减去 8 小时)
+                start_time = start_time - timedelta(hours=8)
+
             if isinstance(end_time, str):
-                end_time = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
+                end_time_str = end_time.replace("Z", "+00:00")
+                try:
+                    end_time = datetime.fromisoformat(end_time_str)
+                except ValueError:
+                    end_time = datetime.strptime(end_time[:19], "%Y-%m-%d %H:%M:%S")
+                # 北京时间转 UTC (减去 8 小时)
+                end_time = end_time - timedelta(hours=8)
 
             log_data = {
                 "text": text,
@@ -231,24 +247,37 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
         self,
         start_date=None,
         end_date=None,
+        timezone: str = "Asia/Shanghai",
     ) -> List[Dict[str, Any]]:
         """
         Get daily statistics for performance trends
+
+        Args:
+            start_date: Start datetime
+            end_date: End datetime
+            timezone: Timezone for grouping ('UTC' or 'Asia/Shanghai')
         """
         try:
             from sqlalchemy import text
 
-            # Use SQLite-compatible date formatting with strftime
-            query = text("""
+            # 根据时区选择日期分组方式
+            if timezone == "Asia/Shanghai":
+                # 加 8 小时转换为北京时间再按日期分组
+                date_expr = "strftime('%Y-%m-%d', datetime(start_time, '+8 hours'))"
+            else:
+                # UTC 时间分组（默认）
+                date_expr = "strftime('%Y-%m-%d', start_time)"
+
+            query = text(f"""
                 SELECT
-                    strftime('%Y-%m-%d', start_time) as date,
+                    {date_expr} as date,
                     COUNT(*) as total,
                     SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
                     SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
                     AVG(duration) as avg_duration
                 FROM execution_logs
                 WHERE start_time >= :start_date AND start_time < :end_date
-                GROUP BY strftime('%Y-%m-%d', start_time)
+                GROUP BY {date_expr}
                 ORDER BY date
             """)
 

@@ -108,9 +108,14 @@ class ExecutionLogService:
         self,
         start_date: datetime,
         end_date: datetime,
+        timezone: str = "Asia/Shanghai",
     ) -> List[Dict[str, Any]]:
         """Get daily statistics for performance trends"""
-        return await self.repo.get_daily_stats(start_date=start_date, end_date=end_date)
+        return await self.repo.get_daily_stats(
+            start_date=start_date,
+            end_date=end_date,
+            timezone=timezone,
+        )
 
     async def get_recent_logs(self, limit: int = 10) -> List[ExecutionLogResponse]:
         """Get most recent logs"""

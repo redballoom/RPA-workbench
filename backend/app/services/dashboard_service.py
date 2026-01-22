@@ -53,18 +53,24 @@ class DashboardService:
     async def get_performance_trends(
         self,
         days: int = 7,
+        timezone: str = "Asia/Shanghai",
     ) -> Dict[str, Any]:
         """
         Get performance trends over time
+
+        Args:
+            days: Number of days to analyze
+            timezone: Timezone for grouping ('UTC' or 'Asia/Shanghai')
         """
         # Get date range
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=days)
 
-        # Get aggregated data
+        # Get aggregated data (使用北京时间分组)
         daily_stats = await self.log_service.get_daily_stats(
             start_date=start_date,
             end_date=end_date,
+            timezone=timezone,
         )
 
         # Format response

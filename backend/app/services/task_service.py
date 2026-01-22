@@ -249,3 +249,37 @@ class TaskService:
         except Exception as e:
             # Log error but don't fail the main operation
             print(f"Error syncing task_count: {e}")
+
+    async def update_task_status_by_app(
+        self,
+        shadow_bot_account: str,
+        app_name: str,
+        new_status: str,
+    ) -> int:
+        """
+        Update task status by shadow_bot_account and app_name.
+
+        This is called when webhook receives execution-complete event
+        to sync task status with actual execution status.
+
+        Returns the number of tasks updated.
+        """
+        try:
+            # Find tasks matching the criteria
+            tasks = await self.repo.get_by_shadow_bot_account(shadow_bot_account)
+            matching_tasks = [t for t in tasks if t.app_name.lower() == app_name.lower()]
+
+            updated_count = 0
+            for task in matching_tasks:
+                await self.repo.update(task.id, {"status": new_status})
+                updated_count += 1
+
+            if updated_count > 0:
+                print(f"Updated {updated_count} task(s) status to '{new_status}' "
+                      f"for account '{shadow_bot_account}' app '{app_name}'")
+
+            return updated_count
+
+        except Exception as e:
+            print(f"Error updating task status: {e}")
+            return 0

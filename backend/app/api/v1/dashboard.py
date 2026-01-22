@@ -26,10 +26,14 @@ async def get_dashboard_stats(
 @router.get("/performance")
 async def get_performance_trends(
     days: int = Query(default=7, ge=1, le=30, description="Number of days to analyze"),
+    timezone: str = Query(default="Asia/Shanghai", description="Timezone for grouping: 'UTC' or 'Asia/Shanghai'"),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Get performance trends over time
+
+    - **days**: Number of days to analyze (1-30)
+    - **timezone**: Timezone for date grouping (default: Asia/Shanghai)
     """
     service = DashboardService(db)
-    return await service.get_performance_trends(days=days)
+    return await service.get_performance_trends(days=days, timezone=timezone)

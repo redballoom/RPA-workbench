@@ -72,6 +72,7 @@ async def execution_complete(
     """
     log_service = ExecutionLogService(db)
     account_service = AccountService(db)
+    task_service = TaskService(db)
 
     try:
         # 构建日志文本
@@ -112,6 +113,15 @@ async def execution_complete(
                 }
             )
 
+        # 【核心修复】更新对应任务的状态为 pending
+        # 根据 shadow_bot_account + app_name 查找并更新任务状态
+        task_status = "pending" if payload.status in ["completed", "failed"] else payload.status
+        await task_service.update_task_status_by_app(
+            shadow_bot_account=payload.shadow_bot_account,
+            app_name=payload.app_name,
+            new_status=task_status,
+        )
+
         # SSE 广播事件 (如果 SSE 服务已注册)
         from app.main import sse_service
         if sse_service:
@@ -140,6 +150,18 @@ async def execution_complete(
                             }
                         }
                     })
+
+                # 发送任务更新事件
+                await sse_service.broadcast({
+                    "type": "task_updated",
+                    "data": {
+                        "shadow_bot_account": payload.shadow_bot_account,
+                        "app_name": payload.app_name,
+                        "changes": {
+                            "status": task_status,
+                        }
+                    }
+                })
             except Exception as sse_error:
                 # SSE 推送失败不影响主流程
                 print(f"SSE broadcast error: {sse_error}")
