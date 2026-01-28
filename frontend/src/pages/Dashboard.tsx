@@ -69,13 +69,17 @@ export default function Dashboard() {
     loadDashboardData();
   }, []);
 
-  // 格式化持续时间
-  const formatDuration = (minutes: number) => {
+  // 格式化持续时间（ webhook 传入 duration_seconds 单位为秒，转换为分钟）
+  const formatDuration = (seconds: number) => {
+    const minutes = seconds / 60;
     if (minutes < 60) {
-      return `${minutes.toFixed(0)}分钟`;
+      return `${Math.round(minutes)}分钟`;
     }
     const hours = Math.floor(minutes / 60);
     const mins = Math.round(minutes % 60);
+    if (mins === 0) {
+      return `${hours}小时`;
+    }
     return `${hours}小时${mins}分钟`;
   };
 

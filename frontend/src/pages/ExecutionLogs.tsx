@@ -24,6 +24,10 @@ export default function ExecutionLogs() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [exporting, setExporting] = useState(false);
 
+  // 排序状态
+  const [sortBy, setSortBy] = useState<string>("start_time");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
   // 模态框状态
   const [selectedLog, setSelectedLog] = useState<ExecutionLog | null>(null);
   const [modalType, setModalType] = useState<"screenshot" | "log">("screenshot");
@@ -46,6 +50,8 @@ export default function ExecutionLogs() {
         status: status && status !== "all" ? status : undefined,
         page: 1,
         page_size: 100,
+        sort_by: sortBy,
+        order: sortOrder,
       });
       setLogs(response.items || []);
     } catch (error) {
@@ -121,16 +127,19 @@ export default function ExecutionLogs() {
     }
   };
 
-  const formatDuration = (minutes: number): string => {
+  const formatDuration = (seconds: number): string => {
+    // webhook 传入 duration_seconds 单位为秒，转换为分钟
+    const minutes = seconds / 60;
+
     if (minutes < 60) {
-      return `${minutes.toFixed(2)}m`;
+      return `${Math.round(minutes)}m`;
     }
     const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
+    const remainingMinutes = Math.round(minutes % 60);
     if (remainingMinutes === 0) {
       return `${hours}h`;
     }
-    return `${hours}h ${remainingMinutes.toFixed(0)}m`;
+    return `${hours}h ${remainingMinutes}m`;
   };
 
   const formatTime = (timeString: string) => {
@@ -334,6 +343,27 @@ export default function ExecutionLogs() {
               <option value="completed">已完成</option>
               <option value="failed">已失败</option>
               <option value="running">运行中</option>
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+              <ChevronDown className="h-4 w-4" />
+            </div>
+          </div>
+          {/* 排序下拉框 */}
+          <div className="relative">
+            <select
+              value={`${sortBy}-${sortOrder}`}
+              onChange={(e) => {
+                const [field, order] = e.target.value.split('-');
+                setSortBy(field);
+                setSortOrder(order as "asc" | "desc");
+                loadLogs(searchTerm, statusFilter);
+              }}
+              className="appearance-none bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm pr-10"
+            >
+              <option value="start_time-desc">开始时间 (最新优先)</option>
+              <option value="start_time-asc">开始时间 (最早优先)</option>
+              <option value="duration-desc">执行时长 (最长优先)</option>
+              <option value="duration-asc">执行时长 (最短优先)</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
               <ChevronDown className="h-4 w-4" />

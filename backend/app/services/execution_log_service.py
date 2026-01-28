@@ -35,22 +35,22 @@ class ExecutionLogService:
         host_ip: Optional[str] = None,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
+        sort_by: str = "start_time",
+        order: str = "desc",
     ) -> Dict[str, Any]:
         """List execution logs with pagination, search, and filtering"""
         skip = (page - 1) * page_size
 
         # Get items and count
-        if search:
-            items = await self.repo.search(
-                search_term=search,
-                status=status,
-                skip=skip,
-                limit=page_size,
-            )
-            total = await self.repo.count_search(search_term=search, status=status)
-        else:
-            items = await self.repo.get_multi(skip=skip, limit=page_size)
-            total = await self.repo.count()
+        items = await self.repo.search(
+            search_term=search,
+            status=status,
+            skip=skip,
+            limit=page_size,
+            sort_by=sort_by,
+            order=order,
+        )
+        total = await self.repo.count_search(search_term=search, status=status)
 
         total_pages = (total + page_size - 1) // page_size if total > 0 else 0
 

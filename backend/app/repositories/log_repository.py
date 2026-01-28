@@ -68,12 +68,26 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
         status: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
+        sort_by: str = "start_time",
+        order: str = "desc",
     ) -> List[ExecutionLog]:
         """
-        Search logs by multiple criteria
+        Search logs by multiple criteria with sorting support
         """
         try:
-            query = select(ExecutionLog).order_by(desc(ExecutionLog.start_time))
+            from sqlalchemy import asc
+
+            # 验证排序字段是否允许
+            allowed_fields = ["start_time", "created_at", "duration", "end_time"]
+            if sort_by not in allowed_fields:
+                sort_by = "start_time"
+
+            # 构建排序表达式
+            sort_column = getattr(ExecutionLog, sort_by)
+            if order == "desc":
+                query = select(ExecutionLog).order_by(desc(sort_column))
+            else:
+                query = query = select(ExecutionLog).order_by(asc(sort_column))
 
             if search_term:
                 query = query.where(

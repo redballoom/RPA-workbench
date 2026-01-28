@@ -30,6 +30,8 @@ async def list_logs(
     host_ip: Optional[str] = Query(default=None, description="Filter by host IP"),
     start_date: Optional[datetime] = Query(default=None, description="Start date filter"),
     end_date: Optional[datetime] = Query(default=None, description="End date filter"),
+    sort_by: Optional[str] = Query(default="start_time", description="Sort field: start_time, created_at, duration"),
+    order: Optional[str] = Query(default="desc", description="Sort order: asc, desc"),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -46,6 +48,8 @@ async def list_logs(
         host_ip=host_ip,
         start_date=start_date,
         end_date=end_date,
+        sort_by=sort_by,
+        order=order,
     )
     return ExecutionLogListResponse(**result)
 

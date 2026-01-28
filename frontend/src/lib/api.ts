@@ -354,12 +354,16 @@ export const logsApi = {
     status?: string;
     page?: number;
     page_size?: number;
+    sort_by?: string;      // 排序字段: start_time, created_at, duration
+    order?: "asc" | "desc"; // 排序方向
   }): Promise<ApiResponse<ExecutionLog>> {
     const searchParams = new URLSearchParams();
     if (params?.search) searchParams.append('search', params.search);
     if (params?.status) searchParams.append('status', params.status);
     if (params?.page) searchParams.append('page', params.page.toString());
     if (params?.page_size) searchParams.append('page_size', params.page_size.toString());
+    if (params?.sort_by) searchParams.append('sort_by', params.sort_by);
+    if (params?.order) searchParams.append('order', params.order);
 
     const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
     return request<ApiResponse<ExecutionLog>>(`/logs${query}`);
