@@ -25,6 +25,9 @@ class ExecutionLogCreate(ExecutionLogBase):
     status: LogStatus = Field(default=LogStatus.running, description="Execution status")
     log_info: bool = Field(default=False, description="Has log info")
     screenshot: bool = Field(default=False, description="Has screenshot")
+    # 新增字段
+    screenshot_path: Optional[str] = Field(default=None, description="Screenshot file path")
+    log_content: Optional[str] = Field(default=None, description="Detailed log content")
 
 
 class ExecutionLogUpdate(BaseModel):
@@ -35,6 +38,9 @@ class ExecutionLogUpdate(BaseModel):
     duration: Optional[float] = Field(default=None, ge=0)
     log_info: Optional[bool] = None
     screenshot: Optional[bool] = None
+    # 新增字段
+    screenshot_path: Optional[str] = None
+    log_content: Optional[str] = None
 
 
 class ExecutionLogInDB(ExecutionLogBase):
@@ -43,6 +49,9 @@ class ExecutionLogInDB(ExecutionLogBase):
     status: LogStatus
     log_info: bool
     screenshot: bool
+    # 新增字段
+    screenshot_path: Optional[str] = None
+    log_content: Optional[str] = None
     created_at: datetime
 
     class Config:

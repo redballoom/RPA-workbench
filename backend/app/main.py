@@ -2,6 +2,8 @@
 Main FastAPI application entry point
 """
 import asyncio
+import os
+from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -9,6 +11,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.core.config import get_settings
@@ -17,6 +20,13 @@ from app.api.v1 import router as api_v1_router
 from app.services.sse_service import set_sse_service, get_sse_service, SSEService
 
 settings = get_settings()
+
+# 确保静态文件目录存在
+STATIC_DIR = Path("app/static")
+UPLOAD_DIR = STATIC_DIR / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+(UPLOAD_DIR / "screenshots").mkdir(exist_ok=True)
+(UPLOAD_DIR / "logs").mkdir(exist_ok=True)
 
 # 全局 SSE 服务实例
 sse_service: SSEService = None
@@ -128,6 +138,9 @@ async def health_check() -> dict:
 
 # Include API routers
 app.include_router(api_v1_router)
+
+# 挂载静态文件目录（用于截图和日志文件访问）
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
 # Global exception handler

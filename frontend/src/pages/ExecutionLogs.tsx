@@ -1,7 +1,20 @@
 import { useState, useEffect } from "react";
-import { Clock, Search, Filter, Download, ChevronDown, MoreHorizontal, Loader2, Wifi } from "lucide-react";
+import {
+  Clock,
+  Search,
+  Download,
+  ChevronDown,
+  Loader2,
+  Wifi,
+  X,
+  ZoomIn,
+  ZoomOut,
+  Copy,
+  FileText,
+  Image as ImageIcon,
+} from "lucide-react";
 import { toast } from "sonner";
-import { logsApi, ExecutionLog, ApiError } from "../lib/api";
+import { logsApi, ExecutionLog, ApiError, getResourceUrl } from "../lib/api";
 import { useSSE, SSEEvent } from "../hooks/useSSE";
 
 export default function ExecutionLogs() {
@@ -10,6 +23,14 @@ export default function ExecutionLogs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [exporting, setExporting] = useState(false);
+
+  // 模态框状态
+  const [selectedLog, setSelectedLog] = useState<ExecutionLog | null>(null);
+  const [modalType, setModalType] = useState<"screenshot" | "log">("screenshot");
+  const [imageZoom, setImageZoom] = useState(1);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [logText, setLogText] = useState<string>("");
+  const [logLoading, setLogLoading] = useState(false);
 
   const { connected, subscribe } = useSSE({
     autoReconnect: true,
@@ -165,6 +186,110 @@ export default function ExecutionLogs() {
     loadLogs(searchTerm, status);
   };
 
+  // 打开截图模态框
+  const openScreenshotModal = (log: ExecutionLog) => {
+    setSelectedLog(log);
+    setModalType("screenshot");
+    setImageZoom(1);
+    setImageLoaded(false);
+  };
+
+  // 打开日志内容模态框
+  const openLogModal = async (log: ExecutionLog) => {
+    setSelectedLog(log);
+    setModalType("log");
+    setLogText("");
+    setLogLoading(true);
+
+    if (log.log_content) {
+      try {
+        const response = await fetch(log.log_content);
+        const text = await response.text();
+        setLogText(text);
+      } catch {
+        setLogText("加载日志内容失败");
+      }
+    }
+
+    setLogLoading(false);
+  };
+
+  // 关闭模态框
+  const closeModal = () => {
+    setSelectedLog(null);
+    setImageZoom(1);
+    setImageLoaded(false);
+    setLogText("");
+    setLogLoading(false);
+  };
+
+  // 缩放图片
+  const zoomIn = () => setImageZoom((z) => Math.min(z + 0.5, 3));
+  const zoomOut = () => setImageZoom((z) => Math.max(z - 0.5, 0.5));
+  const resetZoom = () => setImageZoom(1);
+
+  // 下载截图
+  const downloadScreenshot = async () => {
+    if (!selectedLog?.screenshot_path) return;
+
+    const url = getResourceUrl(selectedLog.screenshot_path);
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `screenshot_${selectedLog.id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(a);
+      toast.success("截图下载成功");
+    } catch {
+      toast.error("截图下载失败");
+    }
+  };
+
+  // 复制日志内容
+  const copyLogContent = async () => {
+    if (!selectedLog?.log_content) {
+      toast.error("日志内容为空");
+      return;
+    }
+
+    const textToCopy = logText || selectedLog.log_content;
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      toast.success("日志内容已复制到剪贴板");
+    } catch {
+      toast.error("复制失败");
+    }
+  };
+
+  // 下载日志文件
+  const downloadLogFile = async () => {
+    if (!selectedLog?.log_content) {
+      toast.error("日志内容为空");
+      return;
+    }
+
+    try {
+      const response = await fetch(selectedLog.log_content);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `log_${selectedLog.id}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(a);
+      toast.success("日志文件下载成功");
+    } catch {
+      toast.error("日志文件下载失败");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -301,24 +426,45 @@ export default function ExecutionLogs() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {log.log_info ? (
-                          <button className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300">
-                            <Filter className="h-4 w-4" />
+                        {log.log_info || log.log_content ? (
+                          <button
+                            onClick={() => openLogModal(log)}
+                            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
+                            title="查看日志内容"
+                          >
+                            <FileText className="h-4 w-4" />
                           </button>
                         ) : (
                           <span className="text-slate-300 dark:text-slate-600">
-                            <Filter className="h-4 w-4" />
+                            <FileText className="h-4 w-4" />
                           </span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {log.screenshot ? (
-                          <button className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300">
-                            <Filter className="h-4 w-4" />
+                        {log.screenshot && log.screenshot_path ? (
+                          <button
+                            onClick={() => openScreenshotModal(log)}
+                            className="group relative"
+                            title="查看截图"
+                          >
+                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                              <img
+                                src={getResourceUrl(log.screenshot_path)}
+                                alt="截图"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = "none";
+                                }}
+                              />
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/50 rounded-lg transition-opacity">
+                              <ZoomIn className="h-5 w-5 text-white" />
+                            </div>
                           </button>
                         ) : (
                           <span className="text-slate-300 dark:text-slate-600">
-                            <Filter className="h-4 w-4" />
+                            <ImageIcon className="h-4 w-4" />
                           </span>
                         )}
                       </td>
@@ -342,6 +488,161 @@ export default function ExecutionLogs() {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 截图模态框 */}
+      {selectedLog && modalType === "screenshot" && selectedLog.screenshot_path && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* 遮罩层 */}
+          <div
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={closeModal}
+          />
+          {/* 模态框内容 */}
+          <div className="relative z-10 w-full h-full flex flex-col">
+            {/* 头部 */}
+            <div className="flex items-center justify-between px-4 py-3 bg-slate-900/80 border-b border-slate-700">
+              <div className="flex items-center space-x-4">
+                <h3 className="text-white font-medium">
+                  {selectedLog.app_name} - 截图
+                </h3>
+                <span className="text-slate-400 text-sm">
+                  {selectedLog.shadow_bot_account} | {selectedLog.host_ip}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={zoomOut}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                  title="缩小"
+                >
+                  <ZoomOut className="h-5 w-5" />
+                </button>
+                <span className="text-white text-sm w-16 text-center">
+                  {Math.round(imageZoom * 100)}%
+                </span>
+                <button
+                  onClick={zoomIn}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                  title="放大"
+                >
+                  <ZoomIn className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={resetZoom}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                  title="重置"
+                >
+                  <span className="text-sm font-medium">100%</span>
+                </button>
+                <button
+                  onClick={downloadScreenshot}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                  title="下载截图"
+                >
+                  <Download className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={closeModal}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            {/* 图片区域 */}
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center">
+              <div
+                className="relative transition-transform duration-200"
+                style={{ transform: `scale(${imageZoom})` }}
+              >
+                {!imageLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 text-indigo-500 animate-spin" />
+                  </div>
+                )}
+                <img
+                  src={getResourceUrl(selectedLog.screenshot_path)}
+                  alt="执行截图"
+                  className="max-w-none"
+                  style={{ maxWidth: "90vw", maxHeight: "calc(90vh - 100px)" }}
+                  onLoad={() => setImageLoaded(true)}
+                  onError={() => setImageLoaded(true)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 日志内容模态框 */}
+      {selectedLog && modalType === "log" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* 遮罩层 */}
+          <div
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={closeModal}
+          />
+          {/* 模态框内容 */}
+          <div className="relative z-10 w-full max-w-4xl h-[80vh] bg-white dark:bg-slate-800 rounded-xl shadow-2xl flex flex-col">
+            {/* 头部 */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  {selectedLog.app_name} - 日志内容
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {selectedLog.shadow_bot_account} | {selectedLog.host_ip} |{" "}
+                  {formatTime(selectedLog.start_time)}
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                {selectedLog.log_content && (
+                  <>
+                    <button
+                      onClick={copyLogContent}
+                      className="flex items-center px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      复制
+                    </button>
+                    <button
+                      onClick={downloadLogFile}
+                      className="flex items-center px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      下载
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={closeModal}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            {/* 日志内容 */}
+            <div className="flex-1 overflow-auto p-6">
+              {logLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 text-indigo-500 animate-spin" />
+                  <span className="ml-2 text-slate-500">加载中...</span>
+                </div>
+              ) : logText ? (
+                <pre className="whitespace-pre-wrap font-mono text-sm text-slate-700 dark:text-slate-300">
+                  {logText}
+                </pre>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-slate-500 dark:text-slate-400">
+                  <FileText className="h-12 w-12 mb-4" />
+                  <p>暂无日志内容</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

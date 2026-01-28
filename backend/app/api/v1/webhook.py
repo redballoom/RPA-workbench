@@ -1,8 +1,9 @@
 """
 Webhook API endpoints for external app callbacks (e.g., ShadowBot/影刀)
 """
-from typing import Optional, Dict, Any
+import uuid
 from datetime import datetime
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,12 +34,16 @@ class WebhookExecutionComplete(BaseModel):
     shadow_bot_account: str = Field(..., min_length=1, description="影刀机器人账号")
     app_name: str = Field(..., min_length=1, description="影刀应用名称")
     status: str = Field(..., description="执行状态: completed / failed / timeout")
-    start_time: str = Field(..., description="ISO 8601 格式开始时间")
-    end_time: str = Field(..., description="ISO 8601 格式结束时间")
+    start_time: str = Field(..., description="开始时间")
+    end_time: str = Field(..., description="结束时间")
     duration_seconds: float = Field(..., ge=0, description="执行时长（秒）")
     result_summary: Optional[ResultSummary] = Field(default=None, description="执行结果汇总")
     log_info: bool = Field(default=False, description="是否包含详细日志")
     screenshot: bool = Field(default=False, description="是否包含截图")
+
+    # 云端资源 URL
+    screenshot_url: Optional[str] = Field(default=None, description="截图云端 OSS URL")
+    log_url: Optional[str] = Field(default=None, description="日志云端 OSS URL")
 
 
 class WebhookResponse(BaseModel):
@@ -46,6 +51,8 @@ class WebhookResponse(BaseModel):
     success: bool
     message: str
     log_id: Optional[str] = None
+    screenshot_url: Optional[str] = None
+    log_url: Optional[str] = None
 
 
 class HeartbeatPayload(BaseModel):
@@ -65,8 +72,9 @@ async def execution_complete(
 
     This endpoint:
     1. Creates an execution log entry
-    2. Updates the account's recent_app, status, and end_time
-    3. Broadcasts SSE event to notify frontend (if SSE service is available)
+    2. Saves screenshot and log content files if provided
+    3. Updates the account's recent_app, status, and end_time
+    4. Broadcasts SSE event to notify frontend (if SSE service is available)
 
     Required fields: shadow_bot_account, app_name (used to locate the account)
     """
@@ -88,7 +96,7 @@ async def execution_complete(
         accounts = await account_service.get_accounts_by_shadow_bot(payload.shadow_bot_account)
         host_ip = accounts[0].host_ip if accounts else ""
 
-        # Create execution log
+        # 先创建日志（获取 log_id）
         log = await log_service.create_log(
             text=log_text,
             app_name=payload.app_name,
@@ -101,6 +109,20 @@ async def execution_complete(
             log_info=payload.log_info,
             screenshot=payload.screenshot,
         )
+
+        log_id = log.id
+
+        # 保存云端资源 URL
+        screenshot_path = None
+        log_content_path = None
+
+        if payload.screenshot_url:
+            screenshot_path = payload.screenshot_url
+            await log_service.update_log(log_id, {"screenshot_path": screenshot_path})
+
+        if payload.log_url:
+            log_content_path = payload.log_url
+            await log_service.update_log(log_id, {"log_content": payload.log_url})
 
         # Update account's recent_app, status, and end_time
         for account in accounts:
@@ -169,7 +191,9 @@ async def execution_complete(
         return WebhookResponse(
             success=True,
             message="执行日志已记录",
-            log_id=log.id if log else None,
+            log_id=log_id,
+            screenshot_url=screenshot_path,
+            log_url=log_content_path,
         )
 
     except Exception as e:

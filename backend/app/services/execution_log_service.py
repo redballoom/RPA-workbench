@@ -149,3 +149,7 @@ class ExecutionLogService:
             screenshot=screenshot,
         )
         return ExecutionLogResponse.model_validate(log)
+
+    async def update_log(self, log_id: str, updates: dict) -> bool:
+        """Update an execution log entry"""
+        return await self.repo.update(log_id, updates)

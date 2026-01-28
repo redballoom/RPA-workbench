@@ -2,7 +2,7 @@
 ExecutionLog model
 """
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Enum, Boolean, DECIMAL, Index
+from sqlalchemy import Column, String, DateTime, Enum, Boolean, DECIMAL, Index, Text
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
@@ -26,6 +26,9 @@ class ExecutionLog(Base):
     host_ip = Column(String(15), nullable=False)
     log_info = Column(Boolean, default=False, nullable=False)
     screenshot = Column(Boolean, default=False, nullable=False)
+    # 新增字段
+    screenshot_path = Column(String(255), nullable=True, comment="截图文件路径")
+    log_content = Column(Text, nullable=True, comment="详细日志内容")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Indexes
