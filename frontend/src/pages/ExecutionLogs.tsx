@@ -14,7 +14,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { logsApi, ExecutionLog, ApiError, getResourceUrl } from "../lib/api";
+import { logsApi, ExecutionLog, ApiError, getResourceUrl, getDownloadUrl } from "../lib/api";
 import { useSSE, SSEEvent } from "../hooks/useSSE";
 
 export default function ExecutionLogs() {
@@ -84,15 +84,15 @@ export default function ExecutionLogs() {
   }, []);
 
   const filteredLogs = logs.filter(log => {
-    const matchesSearch = 
+    const matchesSearch =
       log.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.app_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.shadow_bot_account.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.host_ip.includes(searchTerm) ||
       log.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === "all" || log.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -152,7 +152,7 @@ export default function ExecutionLogs() {
     try {
       setExporting(true);
       const blob = await logsApi.exportLogs();
-      
+
       // 创建下载链接
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -162,7 +162,7 @@ export default function ExecutionLogs() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       toast.success('日志导出成功');
     } catch (error) {
       console.error('Failed to export logs:', error);
@@ -203,7 +203,9 @@ export default function ExecutionLogs() {
 
     if (log.log_content) {
       try {
-        const response = await fetch(log.log_content);
+        // 通过后端代理加载日志内容（浏览器 HTTP 缓存 15 天）
+        const proxyUrl = getResourceUrl(log.log_content);
+        const response = await fetch(proxyUrl);
         const text = await response.text();
         setLogText(text);
       } catch {
@@ -228,11 +230,11 @@ export default function ExecutionLogs() {
   const zoomOut = () => setImageZoom((z) => Math.max(z - 0.5, 0.5));
   const resetZoom = () => setImageZoom(1);
 
-  // 下载截图
+  // 下载截图 - 使用下载代理（不缓存）
   const downloadScreenshot = async () => {
     if (!selectedLog?.screenshot_path) return;
 
-    const url = getResourceUrl(selectedLog.screenshot_path);
+    const url = getDownloadUrl(selectedLog.screenshot_path);
     try {
       const response = await fetch(url);
       const blob = await response.blob();
@@ -266,7 +268,7 @@ export default function ExecutionLogs() {
     }
   };
 
-  // 下载日志文件
+  // 下载日志文件 - 使用下载代理（不缓存）
   const downloadLogFile = async () => {
     if (!selectedLog?.log_content) {
       toast.error("日志内容为空");
@@ -274,7 +276,8 @@ export default function ExecutionLogs() {
     }
 
     try {
-      const response = await fetch(selectedLog.log_content);
+      const proxyUrl = getDownloadUrl(selectedLog.log_content);
+      const response = await fetch(proxyUrl);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
