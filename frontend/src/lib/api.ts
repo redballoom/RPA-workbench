@@ -23,6 +23,7 @@ export interface Account {
   id: string;
   shadow_bot_account: string;
   host_ip: string;
+  port: number;  // 连接端口
   recent_app?: string | null;
   status: 'pending' | 'completed' | 'running';
   end_time?: string | null;
@@ -43,6 +44,7 @@ export interface Task {
   config_file: boolean;
   config_info: boolean;
   trigger_time?: string | null;
+  account_port?: number;  // 从关联账号获取的端口
   created_at: string;
   updated_at: string;
 }
@@ -218,7 +220,7 @@ export const accountsApi = {
   async createAccount(data: {
     shadow_bot_account: string;
     host_ip: string;
-    task_control: string;
+    port: number;
   }): Promise<Account> {
     return request<Account>('/accounts', {
       method: 'POST',
@@ -232,7 +234,7 @@ export const accountsApi = {
     data: Partial<{
       shadow_bot_account: string;
       host_ip: string;
-      task_control: string;
+      port: number;
     }>
   ): Promise<Account> {
     return request<Account>(`/accounts/${id}`, {

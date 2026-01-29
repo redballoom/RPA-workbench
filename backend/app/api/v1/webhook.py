@@ -61,6 +61,98 @@ class HeartbeatPayload(BaseModel):
     app_name: str = Field(..., description="影刀应用名称")
 
 
+class ExecutionConfirmRequest(BaseModel):
+    """确认请求 payload"""
+    shadow_bot_account: str = Field(..., min_length=1, description="影刀机器人账号")
+    app_name: str = Field(..., min_length=1, description="影刀应用名称")
+    action: str = Field(default="START", description="动作: START / STOP")
+
+
+@router.post("/confirm", response_model=WebhookResponse)
+async def confirm_execution(
+    payload: ExecutionConfirmRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    影刀应用确认接口
+
+    监听程序在成功获取控制请求并触发影刀应用后，调用此接口确认。
+    此接口用于将任务状态更新为"运行中"。
+
+    Parameters:
+        shadow_bot_account: 影刀机器人账号
+        app_name: 影刀应用名称
+        action: 动作类型 (START / STOP)
+    """
+    task_service = TaskService(db)
+    account_service = AccountService(db)
+
+    try:
+        # 根据 action 更新状态
+        if payload.action == "START":
+            new_status = "running"
+        elif payload.action == "STOP":
+            new_status = "pending"
+        else:
+            new_status = payload.action.lower()
+
+        # 更新任务状态
+        updated_count = await task_service.update_task_status_by_app(
+            shadow_bot_account=payload.shadow_bot_account,
+            app_name=payload.app_name,
+            new_status=new_status,
+        )
+
+        # 获取关联账号并更新状态
+        accounts = await account_service.get_accounts_by_shadow_bot(payload.shadow_bot_account)
+        for account in accounts:
+            await account_service.update_account(
+                account.id,
+                {
+                    "status": new_status,
+                    "recent_app": payload.app_name,
+                }
+            )
+
+        # SSE 广播事件
+        from app.main import sse_service
+        if sse_service:
+            try:
+                await sse_service.broadcast({
+                    "type": "task_updated",
+                    "data": {
+                        "shadow_bot_account": payload.shadow_bot_account,
+                        "app_name": payload.app_name,
+                        "changes": {
+                            "status": new_status,
+                        }
+                    }
+                })
+            except Exception as sse_error:
+                print(f"SSE broadcast error: {sse_error}")
+
+        if updated_count > 0:
+            return WebhookResponse(
+                success=True,
+                message=f"任务状态已更新为 '{new_status}'",
+            )
+        else:
+            return WebhookResponse(
+                success=True,
+                message="未找到匹配的任务，状态无需更新",
+            )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "CONFIRM_ERROR",
+                "message": f"Failed to process confirm: {str(e)}",
+            },
+        )
+
+
 @router.post("/execution-complete", response_model=WebhookResponse)
 async def execution_complete(
     payload: WebhookExecutionComplete,

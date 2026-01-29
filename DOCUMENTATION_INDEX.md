@@ -88,7 +88,7 @@ RPA-workbench/
 ```bash
 # 终端1：后端
 cd backend
-uvicorn app.main:app --reload --port 8888
+uvicorn app.main:app --reload --port 8000
 
 # 终端2：前端
 cd frontend

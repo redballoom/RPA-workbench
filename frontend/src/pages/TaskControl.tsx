@@ -4,6 +4,9 @@ import { toast } from "sonner";
 import { tasksApi, accountsApi, Task, Account, ApiError } from "../lib/api";
 import { useSSE, SSEEvent } from "../hooks/useSSE";
 
+// API 基础地址（用于代理内网穿透请求）
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+
 export default function TaskControl() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -241,32 +244,54 @@ export default function TaskControl() {
   };
 
   const handleStartTask = async (task: Task) => {
+    // 获取关联账号的端口
+    const relatedAccount = accounts.find(acc => acc.shadow_bot_account === task.shadow_bot_account);
+    const port = relatedAccount?.port || 0;
+
+    // 调用后端代理接口发送控制请求
+    const proxyUrl = `${API_BASE_URL}/resources/proxy/intranet?backend_ip=${encodeURIComponent(task.host_ip)}&backend_port=${port}&tak=${encodeURIComponent(task.app_name)}&target=START`;
+    console.log(`[启动任务] 发送代理请求: ${proxyUrl}`);
+
     try {
-      const response = await tasksApi.startTask(task.id);
-      toast.success(response.message || "任务启动成功");
-      loadTasks();
+      const proxyResponse = await fetch(proxyUrl, { method: "GET" });
+      const proxyResult = await proxyResponse.json();
+
+      if (proxyResult.success) {
+        toast.success("启动请求已发送，等待影刀确认");
+        // 【确认模式】不更新状态，等待 webhook/confirm 回调
+        loadTasks();  // 刷新列表显示当前状态
+      } else {
+        toast.error(`启动失败: ${proxyResult.message}`);
+      }
     } catch (error) {
       console.error('Failed to start task:', error);
-      if (error instanceof ApiError) {
-        toast.error(`启动失败: ${error.message}`);
-      } else {
-        toast.error('启动任务失败');
-      }
+      toast.error("启动请求失败，请检查网络连接");
     }
   };
 
   const handleStopTask = async (task: Task) => {
+    // 获取关联账号的端口
+    const relatedAccount = accounts.find(acc => acc.shadow_bot_account === task.shadow_bot_account);
+    const port = relatedAccount?.port || 0;
+
+    // 调用后端代理接口发送控制请求
+    const proxyUrl = `${API_BASE_URL}/resources/proxy/intranet?backend_ip=${encodeURIComponent(task.host_ip)}&backend_port=${port}&tak=${encodeURIComponent(task.app_name)}&target=ALL`;
+    console.log(`[停止任务] 发送代理请求: ${proxyUrl}`);
+
     try {
-      const response = await tasksApi.stopTask(task.id);
-      toast.success(response.message || "任务停止成功");
-      loadTasks();
+      const proxyResponse = await fetch(proxyUrl, { method: "GET" });
+      const proxyResult = await proxyResponse.json();
+
+      if (proxyResult.success) {
+        toast.success("停止请求已发送，等待影刀确认");
+        // 【确认模式】不更新状态，等待 webhook/confirm 回调
+        loadTasks();  // 刷新列表显示当前状态
+      } else {
+        toast.error(`停止失败: ${proxyResult.message}`);
+      }
     } catch (error) {
       console.error('Failed to stop task:', error);
-      if (error instanceof ApiError) {
-        toast.error(`停止失败: ${error.message}`);
-      } else {
-        toast.error('停止任务失败');
-      }
+      toast.error("停止请求失败，请检查网络连接");
     }
   };
 
@@ -373,7 +398,7 @@ export default function TaskControl() {
                       机器人账号
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      主机IP
+                      主机IP:端口
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       应用名称
@@ -390,7 +415,12 @@ export default function TaskControl() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {filteredTasks.map((task) => (
+                  {filteredTasks.map((task) => {
+                    // 获取关联账号的端口信息
+                    const relatedAccount = accounts.find(acc => acc.shadow_bot_account === task.shadow_bot_account);
+                    const port = relatedAccount?.port || 0;
+
+                    return (
                     <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
                         {task.task_name}
@@ -399,7 +429,7 @@ export default function TaskControl() {
                         {task.shadow_bot_account}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
-                        {task.host_ip}
+                        {task.host_ip}{port > 0 ? `:${port}` : ''}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
                         {task.app_name}
@@ -477,7 +507,8 @@ export default function TaskControl() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </table>
             </div>

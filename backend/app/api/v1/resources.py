@@ -90,3 +90,57 @@ async def proxy_download(
             status_code=500,
             media_type="text/plain; charset=utf-8",
         )
+
+
+# ==================== 内网穿透代理 ====================
+
+INTRANET_PROXY_BASE_URL = "https://qn-v.xf5920.cn/yingdao"
+
+
+@router.get("/proxy/intranet")
+async def proxy_intranet(
+    backend_ip: str = Query(..., description="目标主机 IP"),
+    backend_port: int = Query(..., description="连接端口"),
+    tak: str = Query(..., description="影刀应用名称"),
+    target: str = Query(..., description="操作类型: START / ALL"),
+):
+    """
+    内网穿透控制请求代理
+
+    代理前端发送的内网穿透控制请求，解决浏览器 CORS 问题。
+    后端没有 CORS 限制，可以自由请求外部 API。
+
+    使用示例:
+        GET /api/v1/resources/proxy/intranet?backend_ip=192.168.4.205&backend_port=8000&tak=测试应用&target=START
+    """
+    import time
+
+    timestamp = int(time.time())
+    params = {
+        "backend_ip": backend_ip,
+        "backend_port": str(backend_port),
+        "tak": tak,
+        "target": target,
+        "timestamp": str(timestamp),
+    }
+
+    try:
+        # trust_env=False 禁用系统代理设置
+        async with httpx.AsyncClient(follow_redirects=True, trust_env=False) as client:
+            response = await client.get(
+                INTRANET_PROXY_BASE_URL,
+                params=params,
+                timeout=10.0,  # 10秒超时
+            )
+            return {
+                "success": True,
+                "message": "控制请求已发送",
+                "url": f"{INTRANET_PROXY_BASE_URL}?{httpx.URL(params=params).query.decode()}",
+                "response_status": response.status_code,
+            }
+    except httpx.RequestError as e:
+        return {
+            "success": False,
+            "message": f"请求失败: {str(e)}",
+            "url": f"{INTRANET_PROXY_BASE_URL}?{httpx.URL(params=params).query.decode()}",
+        }

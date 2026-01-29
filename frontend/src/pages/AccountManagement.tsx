@@ -16,7 +16,7 @@ export default function AccountManagement() {
   const [formData, setFormData] = useState({
     shadow_bot_account: "",
     host_ip: "",
-    task_control: "",
+    port: 0,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -107,8 +107,8 @@ export default function AccountManagement() {
       newErrors.host_ip = "IP地址格式不正确";
     }
 
-    if (!formData.task_control.trim()) {
-      newErrors.task_control = "任务控制标识不能为空";
+    if (formData.port < 0 || formData.port > 65535) {
+      newErrors.port = "端口号必须在 0-65535 之间";
     }
 
     setErrors(newErrors);
@@ -139,7 +139,7 @@ export default function AccountManagement() {
       await accountsApi.createAccount({
         shadow_bot_account: formData.shadow_bot_account,
         host_ip: formData.host_ip,
-        task_control: formData.task_control,
+        port: formData.port,
       });
 
       toast.success("账号创建成功");
@@ -166,7 +166,7 @@ export default function AccountManagement() {
       await accountsApi.updateAccount(selectedAccount.id, {
         shadow_bot_account: formData.shadow_bot_account,
         host_ip: formData.host_ip,
-        task_control: formData.task_control,
+        port: formData.port,
       });
 
       toast.success("账号更新成功");
@@ -214,7 +214,7 @@ export default function AccountManagement() {
     setFormData({
       shadow_bot_account: account.shadow_bot_account,
       host_ip: account.host_ip,
-      task_control: account.task_control,
+      port: account.port || 0,
     });
     setIsEditModalOpen(true);
   };
@@ -228,7 +228,7 @@ export default function AccountManagement() {
     setFormData({
       shadow_bot_account: "",
       host_ip: "",
-      task_control: "",
+      port: 0,
     });
     setErrors({});
   };
@@ -306,6 +306,9 @@ export default function AccountManagement() {
                       主机IP
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      端口
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       状态
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -333,6 +336,9 @@ export default function AccountManagement() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
                         {account.host_ip}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-300">
+                        {account.port || "-"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
@@ -473,28 +479,39 @@ export default function AccountManagement() {
                 </div>
 
                 <div>
-                  <label htmlFor="task_control" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    任务控制标识
+                  <label htmlFor="port" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    连接端口
                   </label>
                   <input
-                    type="text"
-                    id="task_control"
-                    name="task_control"
-                    placeholder="例如: account_name--192.168.1...."
+                    type="number"
+                    id="port"
+                    name="port"
+                    placeholder="例如: 22"
                     className={`w-full px-4 py-2 rounded-lg border ${
-                      errors.task_control
+                      errors.port
                         ? "border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500"
                         : "border-slate-300 dark:border-slate-700 focus:ring-indigo-500 focus:border-indigo-500"
                     } bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none`}
-                    value={formData.task_control}
+                    value={formData.port || ""}
                     onChange={handleInputChange}
                   />
-                  {errors.task_control && (
+                  {errors.port && (
                     <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
                       <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.task_control}
+                      {errors.port}
                     </p>
                   )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    任务控制标识
+                  </label>
+                  <div className="px-4 py-2 bg-slate-100 dark:bg-slate-900 rounded-lg text-slate-500 dark:text-slate-400 text-sm">
+                    {formData.shadow_bot_account && formData.host_ip && formData.port
+                      ? `${formData.shadow_bot_account}-${formData.host_ip}:${formData.port}`
+                      : "填写机器人账号、主机IP和端口后将自动生成"}
+                  </div>
                 </div>
               </div>
             </div>
@@ -581,28 +598,37 @@ export default function AccountManagement() {
                 </div>
 
                 <div>
-                  <label htmlFor="task_control" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    任务控制标识
+                  <label htmlFor="port" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    连接端口
                   </label>
                   <input
-                    type="text"
-                    id="task_control"
-                    name="task_control"
-                    placeholder="例如: account_name--192.168.1...."
+                    type="number"
+                    id="port"
+                    name="port"
+                    placeholder="例如: 22"
                     className={`w-full px-4 py-2 rounded-lg border ${
-                      errors.task_control
+                      errors.port
                         ? "border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500"
                         : "border-slate-300 dark:border-slate-700 focus:ring-indigo-500 focus:border-indigo-500"
                     } bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none`}
-                    value={formData.task_control}
+                    value={formData.port || ""}
                     onChange={handleInputChange}
                   />
-                  {errors.task_control && (
+                  {errors.port && (
                     <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center">
                       <AlertCircle className="h-4 w-4 mr-1" />
-                      {errors.task_control}
+                      {errors.port}
                     </p>
                   )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    任务控制标识
+                  </label>
+                  <div className="px-4 py-2 bg-slate-100 dark:bg-slate-900 rounded-lg text-slate-500 dark:text-slate-400 text-sm">
+                    {selectedAccount?.task_control || `${formData.shadow_bot_account}-${formData.host_ip}:${formData.port}`}
+                  </div>
                 </div>
               </div>
             </div>

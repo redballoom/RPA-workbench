@@ -1,7 +1,7 @@
 """
 Task service - business logic for task operations
 """
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,45 @@ class TaskService:
         self.db = db
         self.repo = TaskRepository(db)
         self.account_repo = AccountRepository(db)
+
+    async def _send_control_request(
+        self,
+        backend_ip: str,
+        backend_port: int,
+        task_name: str,
+        target: str,
+    ) -> Tuple[bool, str]:
+        """
+        发送内网穿透控制请求
+
+        Returns:
+            (success: bool, message: str)
+        """
+        import httpx
+        from app.core.config import settings
+
+        timestamp = int(datetime.utcnow().timestamp())
+        params = {
+            "backend_ip": backend_ip,
+            "backend_port": backend_port,
+            "tak": task_name,
+            "target": target,
+            "timestamp": str(timestamp),
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    settings.INTRANET_PROXY_BASE_URL,
+                    params=params,
+                    timeout=10.0,
+                )
+                response.raise_for_status()
+                return True, "控制请求发送成功"
+        except httpx.RequestError as e:
+            return False, f"请求失败: {str(e)}"
+        except httpx.HTTPStatusError as e:
+            return False, f"HTTP 错误: {e.response.status_code}"
 
     async def get_task(self, task_id: str) -> Optional[TaskResponse]:
         """Get a single task by ID"""
@@ -122,7 +161,10 @@ class TaskService:
         return deleted
 
     async def start_task(self, task_id: str) -> TaskStartResponse:
-        """Start a task"""
+        """Start a task - send control request via intranet proxy
+
+        采用确认模式：发送请求后不立即更新状态，等待 /webhook/confirm 确认后再更新
+        """
         task = await self.repo.get(task_id)
         if not task:
             from fastapi import HTTPException
@@ -143,31 +185,53 @@ class TaskService:
                 },
             )
 
-        # Update task status to running and set last_run_time
-        await self.repo.update(
-            task_id,
-            {
-                "status": TaskStatus.running.value,
-                "last_run_time": datetime.utcnow(),
-            },
-        )
-
-        # Sync account status to running
+        # 获取关联账号的端口信息
         accounts = await self.account_repo.get_by_shadow_bot_account_list(task.shadow_bot_account)
-        for account in accounts:
-            await self.account_repo.update(
-                account.id,
-                {"status": "running", "recent_app": task.app_name}
+        if not accounts:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "ACCOUNT_NOT_FOUND",
+                    "message": f"Account '{task.shadow_bot_account}' not found",
+                },
             )
 
+        account = accounts[0]  # 使用第一个匹配的账号
+
+        # 发送内网穿透控制请求
+        success, message = await self._send_control_request(
+            backend_ip=account.host_ip,
+            backend_port=account.port,
+            task_name=task.task_name,
+            target="START",
+        )
+
+        if not success:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "code": "CONTROL_REQUEST_FAILED",
+                    "message": message,
+                },
+            )
+
+        # 【确认模式】不立即更新状态，等待 /webhook/confirm 确认
+        # 只记录日志
+        print(f"[启动请求] 已发送，等待影刀确认: task={task_id}, app={task.app_name}")
+
         return TaskStartResponse(
-            message="Task started successfully",
+            message="启动请求已发送，等待影刀确认",
             task_id=task_id,
-            status=TaskStatus.running,
+            status=TaskStatus.pending,  # 保持 pending 状态，等待确认
         )
 
     async def stop_task(self, task_id: str) -> TaskStopResponse:
-        """Stop a running task"""
+        """Stop a running task - send control request via intranet proxy
+
+        采用确认模式：发送请求后不立即更新状态，等待 /webhook/confirm 确认后再更新
+        """
         task = await self.repo.get(task_id)
         if not task:
             from fastapi import HTTPException
@@ -188,21 +252,45 @@ class TaskService:
                 },
             )
 
-        # Update task status to pending
-        await self.repo.update(task_id, {"status": TaskStatus.pending.value})
-
-        # Sync account status to completed
+        # 获取关联账号的端口信息
         accounts = await self.account_repo.get_by_shadow_bot_account_list(task.shadow_bot_account)
-        for account in accounts:
-            await self.account_repo.update(
-                account.id,
-                {"status": "completed", "end_time": datetime.utcnow()}
+        if not accounts:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "ACCOUNT_NOT_FOUND",
+                    "message": f"Account '{task.shadow_bot_account}' not found",
+                },
             )
 
+        account = accounts[0]
+
+        # 发送内网穿透停止请求
+        success, message = await self._send_control_request(
+            backend_ip=account.host_ip,
+            backend_port=account.port,
+            task_name=task.task_name,
+            target="ALL",
+        )
+
+        if not success:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "code": "CONTROL_REQUEST_FAILED",
+                    "message": message,
+                },
+            )
+
+        # 【确认模式】不立即更新状态，等待 /webhook/confirm 确认
+        print(f"[停止请求] 已发送，等待影刀确认: task={task_id}, app={task.app_name}")
+
         return TaskStopResponse(
-            message="Task stopped successfully",
+            message="停止请求已发送，等待影刀确认",
             task_id=task_id,
-            status=TaskStatus.pending,
+            status=TaskStatus.running,  # 保持 running 状态，等待确认
         )
 
     async def get_task_stats(self) -> Dict[str, int]:

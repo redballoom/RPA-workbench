@@ -18,6 +18,7 @@ class Account(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     shadow_bot_account = Column(String(100), nullable=False, index=True)
     host_ip = Column(String(15), nullable=False, index=True)
+    port = Column(Integer, default=0, nullable=False)
     status = Column(Enum("pending", "completed", "running", name="account_status"), nullable=False, index=True)
     recent_app = Column(String(100), nullable=True)
     end_time = Column(DateTime, nullable=True)

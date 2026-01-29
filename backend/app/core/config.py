@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # CORS Configuration
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
+    # Intranet Proxy Configuration (内网穿透配置)
+    INTRANET_PROXY_BASE_URL: str = "https://qn-v.xf5920.cn/yingdao"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

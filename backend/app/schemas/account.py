@@ -13,12 +13,12 @@ class AccountBase(BaseModel):
     """Base Account schema with common fields"""
     shadow_bot_account: str = Field(..., min_length=1, max_length=100, description="ShadowBot account name")
     host_ip: str = Field(..., min_length=1, max_length=15, description="Host IP address")
+    port: int = Field(default=0, ge=0, le=65535, description="Connection port for internal network access")
     recent_app: Optional[str] = Field(default=None, max_length=100, description="Recent application name")
 
 
 class AccountCreate(AccountBase):
     """Schema for creating an account"""
-    task_control: str = Field(..., min_length=1, max_length=100, description="Task control identifier")
     status: AccountStatus = Field(default=AccountStatus.pending, description="Account status")
 
 
@@ -26,6 +26,7 @@ class AccountUpdate(BaseModel):
     """Schema for updating an account"""
     shadow_bot_account: Optional[str] = Field(default=None, min_length=1, max_length=100)
     host_ip: Optional[str] = Field(default=None, min_length=1, max_length=15)
+    port: Optional[int] = Field(default=None, ge=0, le=65535)
     recent_app: Optional[str] = Field(default=None, max_length=100)
     status: Optional[AccountStatus] = None
     end_time: Optional[datetime] = None

@@ -65,19 +65,26 @@ class AccountService:
 
     async def create_account(self, account_in: AccountCreate) -> AccountResponse:
         """Create a new account"""
+        # Auto-generate task_control: "shadow_bot_account-host_ip:port"
+        task_control = f"{account_in.shadow_bot_account}-{account_in.host_ip}:{account_in.port}"
+
         # Check for duplicate task_control
-        existing = await self.repo.get_by_task_control(account_in.task_control)
+        existing = await self.repo.get_by_task_control(task_control)
         if existing:
             from fastapi import HTTPException
             raise HTTPException(
                 status_code=409,
                 detail={
                     "code": "DUPLICATE_RESOURCE",
-                    "message": f"Account with task_control '{account_in.task_control}' already exists",
+                    "message": f"Account with task_control '{task_control}' already exists",
                 },
             )
 
-        account = await self.repo.create(account_in.model_dump())
+        # Create account data with auto-generated task_control
+        account_data = account_in.model_dump()
+        account_data["task_control"] = task_control
+
+        account = await self.repo.create(account_data)
         return AccountResponse.model_validate(account)
 
     async def update_account(

@@ -87,7 +87,7 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
             if order == "desc":
                 query = select(ExecutionLog).order_by(desc(sort_column))
             else:
-                query = query = select(ExecutionLog).order_by(asc(sort_column))
+                query = select(ExecutionLog).order_by(asc(sort_column))
 
             if search_term:
                 query = query.where(
