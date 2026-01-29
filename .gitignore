@@ -44,8 +44,8 @@ htmlcov/
 *.cover
 
 # Database
-*.db
 *.sqlite3
+!rpa_app.db
 
 # IDE
 .vscode/
