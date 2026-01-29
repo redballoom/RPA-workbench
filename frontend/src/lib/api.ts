@@ -43,6 +43,8 @@ export interface Task {
   status: 'pending' | 'completed' | 'running' | 'failed';
   config_file: boolean;
   config_info: boolean;
+  config_file_path?: string | null;  // 配置文件 OSS URL
+  config_json?: string | null;        // 配置信息 JSON
   trigger_time?: string | null;
   account_port?: number;  // 从关联账号获取的端口
   created_at: string;
@@ -280,6 +282,10 @@ export const tasksApi = {
     shadow_bot_account: string;
     host_ip: string;
     app_name: string;
+    config_file?: boolean;
+    config_info?: boolean;
+    config_file_path?: string;
+    config_json?: string;
   }): Promise<Task> {
     return request<Task>('/tasks', {
       method: 'POST',
@@ -297,6 +303,8 @@ export const tasksApi = {
       app_name: string;
       config_file: boolean;
       config_info: boolean;
+      config_file_path?: string;
+      config_json?: string;
     }>
   ): Promise<Task> {
     return request<Task>(`/tasks/${id}`, {

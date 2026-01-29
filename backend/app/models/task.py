@@ -24,6 +24,13 @@ class Task(Base):
     status = Column(Enum("pending", "completed", "running", "failed", name="task_status"), nullable=False, default="pending", index=True)
     config_file = Column(Boolean, default=False, nullable=False)
     config_info = Column(Boolean, default=False, nullable=False)
+
+    # ============ 配置相关字段 ============
+    # 配置文件路径 (OSS URL)
+    config_file_path = Column(String(500), nullable=True)
+    # 配置信息 (JSON 格式)
+    config_json = Column(String(2000), nullable=True)
+
     trigger_time = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

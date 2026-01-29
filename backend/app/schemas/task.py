@@ -21,6 +21,8 @@ class TaskCreate(TaskBase):
     """Schema for creating a task"""
     config_file: bool = Field(default=False, description="Has config file")
     config_info: bool = Field(default=False, description="Has config info")
+    config_file_path: Optional[str] = Field(default=None, max_length=500, description="Config file OSS URL")
+    config_json: Optional[str] = Field(default=None, max_length=2000, description="Config info JSON")
     trigger_time: Optional[datetime] = Field(default=None, description="Scheduled trigger time")
 
 
@@ -34,6 +36,8 @@ class TaskUpdate(BaseModel):
     status: Optional[TaskStatus] = None
     config_file: Optional[bool] = None
     config_info: Optional[bool] = None
+    config_file_path: Optional[str] = Field(default=None, max_length=500)
+    config_json: Optional[str] = Field(default=None, max_length=2000)
     trigger_time: Optional[datetime] = None
 
 
@@ -44,6 +48,8 @@ class TaskInDB(TaskBase):
     status: TaskStatus
     config_file: bool
     config_info: bool
+    config_file_path: Optional[str] = None
+    config_json: Optional[str] = None
     trigger_time: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime

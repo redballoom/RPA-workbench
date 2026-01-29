@@ -25,7 +25,14 @@ export default function TaskControl() {
     app_name: "",
     config_file: false,
     config_info: false,
+    config_file_path: "",
+    config_json: "",
   });
+
+  // 配置相关的额外状态
+  const [configFileObj, setConfigFileObj] = useState<File | null>(null);
+  const [configFileUploading, setConfigFileUploading] = useState(false);
+  const [configJsonValid, setConfigJsonValid] = useState(true);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -125,6 +132,81 @@ export default function TaskControl() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // 处理配置方式变更（非互斥，可以同时选择）
+  const handleConfigTypeChange = (type: 'file' | 'info', checked: boolean) => {
+    if (type === 'file') {
+      setFormData((prev) => ({
+        ...prev,
+        config_file: checked,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        config_info: checked,
+      }));
+    }
+  };
+
+  // 处理 JSON 配置输入
+  const handleConfigJsonChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, config_json: value }));
+    // 验证 JSON 格式
+    try {
+      if (value.trim()) {
+        JSON.parse(value);
+        setConfigJsonValid(true);
+      } else {
+        setConfigJsonValid(true);
+      }
+    } catch {
+      setConfigJsonValid(false);
+    }
+  };
+
+  // 处理配置文件选择
+  const handleConfigFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setConfigFileObj(file);
+    }
+  };
+
+  // 上传配置文件到 OSS
+  const uploadConfigFile = async (): Promise<string | null> => {
+    if (!configFileObj || !formData.shadow_bot_account || !formData.app_name) {
+      return formData.config_file_path || null;
+    }
+
+    setConfigFileUploading(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', configFileObj);
+      formDataUpload.append('shadow_bot_account', formData.shadow_bot_account);
+      formDataUpload.append('app_name', formData.app_name);
+
+      const response = await fetch(`${API_BASE_URL}/resources/upload/config`, {
+        method: 'POST',
+        body: formDataUpload,
+      });
+
+      if (!response.ok) {
+        throw new Error('上传失败');
+      }
+
+      const result = await response.json();
+      if (result.success && result.file_url) {
+        return result.file_url;
+      }
+      return null;
+    } catch (error) {
+      console.error('上传配置文件失败:', error);
+      toast.error('上传配置文件失败');
+      return null;
+    } finally {
+      setConfigFileUploading(false);
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
@@ -164,13 +246,35 @@ export default function TaskControl() {
   const handleAddTask = async () => {
     if (!validateForm()) return;
 
+    // 验证配置信息
+    if (formData.config_info && formData.config_json && !configJsonValid) {
+      toast.error("JSON 格式不正确");
+      return;
+    }
+
     try {
       setSubmitting(true);
+
+      // 如果选择了配置文件，先上传
+      let configFilePath = "";
+      if (formData.config_file && configFileObj) {
+        const uploaded = await uploadConfigFile();
+        if (!uploaded) {
+          toast.error("配置文件上传失败");
+          return;
+        }
+        configFilePath = uploaded;
+      }
+
       await tasksApi.createTask({
         task_name: formData.task_name,
         shadow_bot_account: formData.shadow_bot_account,
         host_ip: formData.host_ip,
         app_name: formData.app_name,
+        config_file: formData.config_file,
+        config_info: formData.config_info,
+        config_file_path: configFilePath || undefined,
+        config_json: formData.config_json || undefined,
       });
 
       toast.success("任务创建成功");
@@ -192,8 +296,26 @@ export default function TaskControl() {
   const handleEditTask = async () => {
     if (!selectedTask || !validateForm()) return;
 
+    // 验证配置信息
+    if (formData.config_info && formData.config_json && !configJsonValid) {
+      toast.error("JSON 格式不正确");
+      return;
+    }
+
     try {
       setSubmitting(true);
+
+      // 如果选择了配置文件且有新文件，先上传
+      let configFilePath = selectedTask.config_file_path || "";
+      if (formData.config_file && configFileObj) {
+        const uploaded = await uploadConfigFile();
+        if (!uploaded) {
+          toast.error("配置文件上传失败");
+          return;
+        }
+        configFilePath = uploaded;
+      }
+
       await tasksApi.updateTask(selectedTask.id, {
         task_name: formData.task_name,
         shadow_bot_account: formData.shadow_bot_account,
@@ -201,6 +323,8 @@ export default function TaskControl() {
         app_name: formData.app_name,
         config_file: formData.config_file,
         config_info: formData.config_info,
+        config_file_path: configFilePath || undefined,
+        config_json: formData.config_json || undefined,
       });
 
       toast.success("任务更新成功");
@@ -304,7 +428,10 @@ export default function TaskControl() {
       app_name: task.app_name,
       config_file: task.config_file,
       config_info: task.config_info,
+      config_file_path: task.config_file_path || "",
+      config_json: task.config_json || "",
     });
+    setConfigFileObj(null);  // 清空已选文件
     setIsEditModalOpen(true);
   };
 
@@ -321,7 +448,10 @@ export default function TaskControl() {
       app_name: "",
       config_file: false,
       config_info: false,
+      config_file_path: "",
+      config_json: "",
     });
+    setConfigFileObj(null);
     setErrors({});
   };
 
@@ -653,27 +783,89 @@ export default function TaskControl() {
                 </div>
 
                 <div className="flex items-center space-x-6">
-                  <label className="flex items-center">
+                  <label className="flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      name="config_file"
                       checked={formData.config_file}
-                      onChange={handleInputChange}
+                      onChange={(e) => handleConfigTypeChange('file', e.target.checked)}
                       className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
                     />
                     <span className="ml-2 text-sm text-slate-700 dark:text-slate-300">配置文件</span>
                   </label>
-                  <label className="flex items-center">
+                  <label className="flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      name="config_info"
                       checked={formData.config_info}
-                      onChange={handleInputChange}
+                      onChange={(e) => handleConfigTypeChange('info', e.target.checked)}
                       className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
                     />
                     <span className="ml-2 text-sm text-slate-700 dark:text-slate-300">配置信息</span>
                   </label>
                 </div>
+
+                {/* 条件显示：配置文件上传 */}
+                {formData.config_file && (
+                  <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      上传配置文件
+                    </label>
+                    <input
+                      type="file"
+                      accept=".json,.txt,.csv,.conf,.config,.yaml,.yml"
+                      onChange={handleConfigFileChange}
+                      className="block w-full text-sm text-slate-500 dark:text-slate-400
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-lg file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-indigo-50 file:text-indigo-700
+                        dark:file:bg-indigo-900/30 dark:file:text-indigo-300
+                        hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50"
+                    />
+                    {configFileObj && (
+                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                        已选择: {configFileObj.name}
+                      </p>
+                    )}
+                    {formData.config_file_path && !configFileObj && (
+                      <p className="mt-2 text-sm text-green-600 dark:text-green-400">
+                        已上传: {formData.config_file_path.split('/').pop()}
+                      </p>
+                    )}
+                    {configFileUploading && (
+                      <p className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 flex items-center">
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        上传中...
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* 条件显示：JSON 配置输入 */}
+                {formData.config_info && (
+                  <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      配置信息 (JSON 格式)
+                    </label>
+                    <textarea
+                      value={formData.config_json}
+                      onChange={(e) => handleConfigJsonChange(e.target.value)}
+                      placeholder='{"key": "value"}'
+                      className={`w-full h-32 px-4 py-2 rounded-lg border font-mono text-sm resize-none focus:outline-none ${
+                        configJsonValid
+                          ? "border-slate-300 dark:border-slate-700 focus:ring-indigo-500 focus:border-indigo-500"
+                          : "border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500"
+                      } bg-white dark:bg-slate-900 text-slate-900 dark:text-white`}
+                    />
+                    {!configJsonValid && (
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                        JSON 格式不正确
+                      </p>
+                    )}
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      请输入有效的 JSON 格式配置信息
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-700 space-x-3">
@@ -813,27 +1005,89 @@ export default function TaskControl() {
                 </div>
 
                 <div className="flex items-center space-x-6">
-                  <label className="flex items-center">
+                  <label className="flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      name="config_file"
                       checked={formData.config_file}
-                      onChange={handleInputChange}
+                      onChange={(e) => handleConfigTypeChange('file', e.target.checked)}
                       className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
                     />
                     <span className="ml-2 text-sm text-slate-700 dark:text-slate-300">配置文件</span>
                   </label>
-                  <label className="flex items-center">
+                  <label className="flex items-center cursor-pointer">
                     <input
                       type="checkbox"
-                      name="config_info"
                       checked={formData.config_info}
-                      onChange={handleInputChange}
+                      onChange={(e) => handleConfigTypeChange('info', e.target.checked)}
                       className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
                     />
                     <span className="ml-2 text-sm text-slate-700 dark:text-slate-300">配置信息</span>
                   </label>
                 </div>
+
+                {/* 条件显示：配置文件上传 */}
+                {formData.config_file && (
+                  <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      上传配置文件
+                    </label>
+                    <input
+                      type="file"
+                      accept=".json,.txt,.csv,.conf,.config,.yaml,.yml"
+                      onChange={handleConfigFileChange}
+                      className="block w-full text-sm text-slate-500 dark:text-slate-400
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-lg file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-indigo-50 file:text-indigo-700
+                        dark:file:bg-indigo-900/30 dark:file:text-indigo-300
+                        hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50"
+                    />
+                    {configFileObj && (
+                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                        已选择: {configFileObj.name}
+                      </p>
+                    )}
+                    {formData.config_file_path && !configFileObj && (
+                      <p className="mt-2 text-sm text-green-600 dark:text-green-400">
+                        已上传: {formData.config_file_path.split('/').pop()}
+                      </p>
+                    )}
+                    {configFileUploading && (
+                      <p className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 flex items-center">
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        上传中...
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* 条件显示：JSON 配置输入 */}
+                {formData.config_info && (
+                  <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      配置信息 (JSON 格式)
+                    </label>
+                    <textarea
+                      value={formData.config_json}
+                      onChange={(e) => handleConfigJsonChange(e.target.value)}
+                      placeholder='{"key": "value"}'
+                      className={`w-full h-32 px-4 py-2 rounded-lg border font-mono text-sm resize-none focus:outline-none ${
+                        configJsonValid
+                          ? "border-slate-300 dark:border-slate-700 focus:ring-indigo-500 focus:border-indigo-500"
+                          : "border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500"
+                      } bg-white dark:bg-slate-900 text-slate-900 dark:text-white`}
+                    />
+                    {!configJsonValid && (
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                        JSON 格式不正确
+                      </p>
+                    )}
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      请输入有效的 JSON 格式配置信息
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-700 space-x-3">

@@ -1044,7 +1044,208 @@ rm app.db
 
 ---
 
+## 14. 资源配置 API 测试（Issue #9）
+
+### 14.1 上传配置文件到 OSS
+
+**POST** `/api/v1/resources/upload/config`
+
+**功能**: 上传配置文件到阿里云 OSS（如果未配置 OSS，则保存到本地存储）
+
+**Content-Type**: `multipart/form-data`
+
+**Form Parameters:**
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| file | File | 是 | 配置文件 |
+| shadow_bot_account | string | 是 | 机器人账号 |
+| app_name | string | 是 | 应用名称 |
+
+**cURL:**
+```bash
+# 上传配置文件
+curl -X POST "http://localhost:8000/api/v1/resources/upload/config" \
+  -F "file=@/path/to/config.json" \
+  -F "shadow_bot_account=redballoon" \
+  -F "app_name=测试应用"
+```
+
+**Postman 设置:**
+- Method: POST
+- URL: http://localhost:8000/api/v1/resources/upload/config
+- Body: form-data
+  - Key: `file`, Type: File, Value: 选择本地文件
+  - Key: `shadow_bot_account`, Type: Text, Value: `redballoon`
+  - Key: `app_name`, Type: Text, Value: `测试应用`
+
+**预期响应 (OSS 上传成功):**
+```json
+{
+  "success": true,
+  "file_url": "https://rpa-workbench.oss-cn-shenzhen.aliyuncs.com/config/redballoon/测试应用/20260129_120000_config.json",
+  "message": "文件上传成功"
+}
+```
+
+**预期响应 (本地存储):**
+```json
+{
+  "success": true,
+  "file_url": "/static/configs/20260129_120000_config.json",
+  "message": "文件已保存到本地存储"
+}
+```
+
+**错误响应 (500):**
+```json
+{
+  "detail": "上传失败: 错误信息"
+}
+```
+
+---
+
+### 14.2 获取任务配置（供影刀调用）
+
+**POST** `/api/v1/resources/config/get`
+
+**功能**: 影刀应用启动时调用此接口获取配置信息
+
+**Request Body:**
+```json
+{
+  "shadow_bot_account": "redballoon",
+  "app_name": "测试应用"
+}
+```
+
+**cURL:**
+```bash
+curl -X POST "http://localhost:8000/api/v1/resources/config/get" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "shadow_bot_account": "redballoon",
+    "app_name": "测试应用"
+  }'
+```
+
+**Postman 设置:**
+- Method: POST
+- URL: http://localhost:8000/api/v1/resources/config/get
+- Headers: Content-Type: application/json
+- Body (raw JSON):
+```json
+{
+  "shadow_bot_account": "redballoon",
+  "app_name": "测试应用"
+}
+```
+
+**预期响应 (200 OK):**
+```json
+{
+  "config_file": true,
+  "config_file_url": "https://rpa-workbench.oss-cn-shenzhen.aliyuncs.com/config/redballoon/测试应用/config.json",
+  "config_info": true,
+  "config_json": "{\"key\": \"value\"}"
+}
+```
+
+**预期响应 (任务不存在 404):**
+```json
+{
+  "code": "TASK_NOT_FOUND",
+  "message": "任务未找到: shadow_bot_account=redballoon, app_name=测试应用"
+}
+```
+
+---
+
+### 14.3 完整测试流程
+
+```bash
+# 1. 先创建一个有配置的任务
+echo "=== 创建测试任务 ==="
+curl -X POST "http://localhost:8000/api/v1/tasks" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_name": "测试任务",
+    "shadow_bot_account": "redballoon",
+    "host_ip": "192.168.1.100",
+    "app_name": "测试应用",
+    "config_file": true,
+    "config_info": true
+  }'
+
+# 2. 上传配置文件
+echo -e "\n=== 上传配置文件 ==="
+curl -X POST "http://localhost:8000/api/v1/resources/upload/config" \
+  -F "file=@config.json" \
+  -F "shadow_bot_account=redballoon" \
+  -F "app_name=测试应用"
+
+# 3. 获取任务配置（模拟影刀调用）
+echo -e "\n=== 获取任务配置 ==="
+curl -X POST "http://localhost:8000/api/v1/resources/config/get" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "shadow_bot_account": "redballoon",
+    "app_name": "测试应用"
+  }'
+```
+
+---
+
+### 14.4 资源代理接口
+
+#### 14.4.1 代理请求外部资源
+
+**GET** `/api/v1/resources/proxy`
+
+**功能**: 代理请求 OSS 等外部资源，解决浏览器 CORS 问题
+
+**Query Parameters:**
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| url | string | 是 | 要代理的资源 URL |
+
+**cURL:**
+```bash
+# 代理获取 OSS 资源
+curl "http://localhost:8000/api/v1/resources/proxy?url=https://rpa-workbench.oss-cn-shenzhen.aliyuncs.com/config/test.json"
+```
+
+**响应头包含缓存:**
+- `Cache-Control: public, max-age=1296000` (15天缓存)
+
+#### 14.4.2 代理下载外部资源
+
+**GET** `/api/v1/resources/proxy/download`
+
+**功能**: 代理下载资源，强制触发下载
+
+**cURL:**
+```bash
+curl "http://localhost:8000/api/v1/resources/proxy/download?url=https://rpa-workbench.oss-cn-shenzhen.aliyuncs.com/screenshot.png" \
+  -o screenshot.png
+```
+
+---
+
+### 14.5 资源配置 API 端点总览
+
+| 方法 | 路径 | 功能 |
+|------|------|------|
+| POST | /api/v1/resources/upload/config | 上传配置文件到 OSS |
+| POST | /api/v1/resources/config/get | 影刀获取任务配置 |
+| GET | /api/v1/resources/proxy | 代理请求外部资源 |
+| GET | /api/v1/resources/proxy/download | 代理下载外部资源 |
+| GET | /api/v1/resources/proxy/intranet | 内网穿透控制代理 |
+
+---
+
 **文档结束**
 
 **编制**: Claude Code
-**日期**: 2026-01-21
+**日期**: 2026-01-29
+**版本**: v1.1 (新增资源配置 API)

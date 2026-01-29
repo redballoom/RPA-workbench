@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     # Intranet Proxy Configuration (内网穿透配置)
     INTRANET_PROXY_BASE_URL: str = "https://qn-v.xf5920.cn/yingdao"
 
+    # OSS Configuration (阿里云 OSS)
+    OSS_ACCESS_KEY_ID: str = ""
+    OSS_ACCESS_KEY_SECRET: str = ""
+    OSS_BUCKET_NAME: str = "rpa-workbench"
+    OSS_ENDPOINT: str = "oss-cn-shenzhen.aliyuncs.com"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

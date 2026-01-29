@@ -144,6 +144,30 @@ class TaskRepository(BaseRepository[Task, dict, dict]):
         """
         return await self.get_by_status("failed")
 
+    async def get_by_account_and_app(
+        self,
+        shadow_bot_account: str,
+        app_name: str,
+    ) -> Optional[Task]:
+        """
+        Get task by shadow bot account and application name
+
+        Used by ShadowBot to retrieve task configuration.
+        """
+        try:
+            result = await self.db.execute(
+                select(Task).where(
+                    and_(
+                        Task.shadow_bot_account == shadow_bot_account,
+                        Task.app_name == app_name,
+                    )
+                )
+            )
+            return result.scalar_one_or_none()
+        except Exception as e:
+            await self.db.rollback()
+            raise
+
     async def update_status(
         self,
         id: str,

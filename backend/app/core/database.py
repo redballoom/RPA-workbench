@@ -1,6 +1,7 @@
 """
 Database configuration and connection management
 """
+from pathlib import Path
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -29,6 +30,11 @@ AsyncSessionLocal = async_sessionmaker(
 class Base(DeclarativeBase):
     """Base class for all models"""
     pass
+
+
+# 静态文件目录（用于本地存储配置文件、截图等）
+STATIC_DIR = Path(__file__).parent.parent / "static"
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
