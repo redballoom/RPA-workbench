@@ -107,17 +107,12 @@ export default function ExecutionLogs() {
       case "completed":
         return {
           className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-          text: "已完成"
+          text: "成功"
         };
       case "failed":
         return {
           className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-          text: "已失败"
-        };
-      case "running":
-        return {
-          className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 animate-pulse",
-          text: "运行中"
+          text: "失败"
         };
       default:
         return {
@@ -340,9 +335,8 @@ export default function ExecutionLogs() {
               className="appearance-none bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm pr-10"
             >
               <option value="all">全部状态</option>
-              <option value="completed">已完成</option>
-              <option value="failed">已失败</option>
-              <option value="running">运行中</option>
+              <option value="completed">成功</option>
+              <option value="failed">失败</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
               <ChevronDown className="h-4 w-4" />

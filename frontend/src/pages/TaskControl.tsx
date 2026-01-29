@@ -567,21 +567,13 @@ export default function TaskControl() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 py-1 text-xs rounded-full ${
-                            task.status === "completed"
-                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                              : task.status === "running"
+                            task.status === "running"
                               ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                              : task.status === "failed"
-                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
                               : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
                           }`}
                         >
-                          {task.status === "completed"
-                            ? "已完成"
-                            : task.status === "running"
+                          {task.status === "running"
                             ? "运行中"
-                            : task.status === "failed"
-                            ? "失败"
                             : "待启动"}
                         </span>
                       </td>
@@ -603,7 +595,7 @@ export default function TaskControl() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          {task.status === "pending" || task.status === "failed" ? (
+                          {task.status === "pending" ? (
                             <button
                               onClick={() => handleStartTask(task)}
                               className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300"

@@ -21,7 +21,7 @@ class Task(Base):
     host_ip = Column(String(15), nullable=False)
     app_name = Column(String(100), nullable=False, index=True)
     last_run_time = Column(DateTime, nullable=True)
-    status = Column(Enum("pending", "completed", "running", "failed", name="task_status"), nullable=False, default="pending", index=True)
+    status = Column(Enum("pending", "running", name="task_status"), nullable=False, default="pending", index=True)
     config_file = Column(Boolean, default=False, nullable=False)
     config_info = Column(Boolean, default=False, nullable=False)
 

@@ -15,18 +15,15 @@ class AccountStatus(str, Enum):
 
 
 class TaskStatus(str, Enum):
-    """Task status enum"""
+    """Task status enum - 任务只有 pending/running 两种状态"""
     pending = "pending"
-    completed = "completed"
     running = "running"
-    failed = "failed"
 
 
 class LogStatus(str, Enum):
-    """Log status enum"""
+    """Log status enum - 日志只有 completed/failed 两种状态"""
     completed = "completed"
     failed = "failed"
-    running = "running"
 
 
 class UserRole(str, Enum):

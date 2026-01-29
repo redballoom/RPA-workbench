@@ -40,7 +40,7 @@ export interface Task {
   host_ip: string;
   app_name: string;
   last_run_time?: string | null;
-  status: 'pending' | 'completed' | 'running' | 'failed';
+  status: 'pending' | 'running';
   config_file: boolean;
   config_info: boolean;
   config_file_path?: string | null;  // 配置文件 OSS URL
@@ -56,7 +56,7 @@ export interface ExecutionLog {
   text: string;
   app_name: string;
   shadow_bot_account: string;
-  status: 'completed' | 'failed' | 'running';
+  status: 'completed' | 'failed';
   start_time: string;
   end_time: string;
   duration: number;

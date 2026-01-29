@@ -19,7 +19,7 @@ class ExecutionLog(Base):
     text = Column(String(255), nullable=False, index=True)
     app_name = Column(String(100), nullable=False, index=True)
     shadow_bot_account = Column(String(100), nullable=False, index=True)
-    status = Column(Enum("completed", "failed", "running", name="log_status"), nullable=False, index=True)
+    status = Column(Enum("completed", "failed", name="log_status"), nullable=False, index=True)
     start_time = Column(DateTime, nullable=False, index=True)
     end_time = Column(DateTime, nullable=False)
     duration = Column(DECIMAL(10, 2), nullable=False)
