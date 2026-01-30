@@ -309,3 +309,43 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
         except Exception as e:
             await self.db.rollback()
             raise
+
+    async def get_execution_rank(
+        self,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get execution time ranking by app name (all history)
+
+        Args:
+            limit: Maximum number of items to return (default: 10)
+
+        Returns:
+            List of apps sorted by average execution duration (descending)
+        """
+        try:
+            query = text("""
+                SELECT
+                    app_name,
+                    AVG(duration) as avg_duration,
+                    COUNT(*) as execution_count
+                FROM execution_logs
+                GROUP BY app_name
+                ORDER BY avg_duration DESC
+                LIMIT :limit
+            """)
+
+            result = await self.db.execute(query, {"limit": limit})
+            rows = result.fetchall()
+
+            return [
+                {
+                    "app_name": row[0] or "",
+                    "avg_duration": round(float(row[1]), 1) if row[1] else 0,
+                    "execution_count": int(row[2]) if row[2] else 0,
+                }
+                for row in rows
+            ]
+        except Exception as e:
+            await self.db.rollback()
+            raise

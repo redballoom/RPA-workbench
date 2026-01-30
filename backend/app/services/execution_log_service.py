@@ -153,3 +153,7 @@ class ExecutionLogService:
     async def update_log(self, log_id: str, updates: dict) -> bool:
         """Update an execution log entry"""
         return await self.repo.update(log_id, updates)
+
+    async def get_execution_rank(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get execution time ranking by app name (all history)"""
+        return await self.repo.get_execution_rank(limit=limit)

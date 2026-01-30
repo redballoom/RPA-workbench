@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { LayoutDashboard, Users, TerminalSquare, Clock, MoreHorizontal, Loader2, Wifi } from "lucide-react";
 import { Link } from "react-router-dom";
-import { dashboardApi, logsApi, ExecutionLog, DashboardStats, PerformanceTrends, ApiError } from "../lib/api";
+import { dashboardApi, logsApi, ExecutionLog, DashboardStats, PerformanceTrends, ExecutionRank, ApiError } from "../lib/api";
 import { useSSE, SSEEvent } from "../hooks/useSSE";
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [performance, setPerformance] = useState<PerformanceTrends | null>(null);
   const [recentLogs, setRecentLogs] = useState<ExecutionLog[]>([]);
+  const [executionRank, setExecutionRank] = useState<ExecutionRank[]>([]);
   const [loading, setLoading] = useState(true);
 
   const { connected, subscribe } = useSSE({
@@ -21,15 +22,17 @@ export default function Dashboard() {
       setLoading(true);
 
       // 并行加载所有数据
-      const [statsData, performanceData, logsData] = await Promise.all([
+      const [statsData, performanceData, logsData, rankData] = await Promise.all([
         dashboardApi.getStats(),
         dashboardApi.getPerformance(7),
-        logsApi.getLogs({ page: 1, page_size: 5 })
+        logsApi.getLogs({ page: 1, page_size: 5 }),
+        dashboardApi.getExecutionRank(10),
       ]);
 
       setStats(statsData);
       setPerformance(performanceData);
       setRecentLogs(logsData.items || []);
+      setExecutionRank(rankData.items || []);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
       if (error instanceof ApiError) {
@@ -229,16 +232,16 @@ export default function Dashboard() {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Performance Trend Chart */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 lg:col-span-2">
-          <div className="flex justify-between items-center mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Performance Trend Chart - 紧凑 */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 border border-slate-200 dark:border-slate-700">
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">性能趋势</h2>
             <button className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
               <MoreHorizontal className="h-5 w-5 text-slate-500 dark:text-slate-400" />
             </button>
           </div>
-          <div className="h-80">
+          <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={performanceData}>
                 <defs>
@@ -250,12 +253,12 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip 
-                  contentStyle={{ 
-                    borderRadius: '8px', 
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: '8px',
                     border: '1px solid #e2e8f0',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                  }} 
+                  }}
                 />
                 <Area type="monotone" dataKey="value" stroke="#6366f1" fillOpacity={1} fill="url(#colorValue)" />
               </AreaChart>
@@ -263,15 +266,47 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Execution Time Rank */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 border border-slate-200 dark:border-slate-700">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">任务执行时间排行</h2>
+            <button className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
+              <MoreHorizontal className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+            </button>
+          </div>
+          <div className="space-y-3">
+            {executionRank.map((item, index) => (
+              <div key={item.app_name} className="flex items-center justify-between">
+                <div className="flex items-center min-w-0 flex-1">
+                  <span className="text-slate-400 mr-2 text-sm w-5">{index + 1}</span>
+                  <span className="truncate text-sm text-slate-700 dark:text-slate-300">
+                    {item.app_name}
+                  </span>
+                </div>
+                <span className="text-sm font-medium text-slate-900 dark:text-white ml-2">
+                  {formatDuration(item.avg_duration)}
+                  <span className="text-slate-400 font-normal ml-1">({item.execution_count}次)</span>
+                </span>
+              </div>
+            ))}
+          </div>
+          {executionRank.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <TerminalSquare className="h-8 w-8 text-slate-300 dark:text-slate-600 mb-2" />
+              <p className="text-sm text-slate-500 dark:text-slate-400">暂无排行数据</p>
+            </div>
+          )}
+        </div>
+
         {/* Task Status Pie Chart */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
-          <div className="flex justify-between items-center mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 border border-slate-200 dark:border-slate-700">
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">任务状态分布</h2>
             <button className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
               <MoreHorizontal className="h-5 w-5 text-slate-500 dark:text-slate-400" />
             </button>
           </div>
-          <div className="h-64 flex items-center justify-center">
+          <div className="h-48 flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -302,7 +337,7 @@ export default function Dashboard() {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="grid grid-cols-1 gap-3 mt-4">
+          <div className="grid grid-cols-1 gap-2 mt-2">
             {statusData.map((item) => (
               <div key={item.name} className="flex items-center justify-between">
                 <div className="flex items-center">

@@ -144,6 +144,17 @@ export interface PerformanceTrends {
   avgDuration: number;
 }
 
+export interface ExecutionRank {
+  app_name: string;
+  avg_duration: number;
+  execution_count: number;
+}
+
+export interface ExecutionRankResponse {
+  items: ExecutionRank[];
+  generated_at: string;
+}
+
 // API错误处理类
 class ApiError extends Error {
   constructor(
@@ -400,6 +411,11 @@ export const dashboardApi = {
   // 获取性能趋势
   async getPerformance(days: number = 7): Promise<PerformanceTrends> {
     return request<PerformanceTrends>(`/dashboard/performance?days=${days}`);
+  },
+
+  // 获取执行时间排行榜
+  async getExecutionRank(limit: number = 10): Promise<ExecutionRankResponse> {
+    return request<ExecutionRankResponse>(`/dashboard/execution-rank?limit=${limit}`);
   },
 };
 

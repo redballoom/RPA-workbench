@@ -37,3 +37,17 @@ async def get_performance_trends(
     """
     service = DashboardService(db)
     return await service.get_performance_trends(days=days, timezone=timezone)
+
+
+@router.get("/execution-rank")
+async def get_execution_rank(
+    limit: int = Query(default=10, ge=1, le=50, description="Maximum number of items to return"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get execution time ranking by app name (all history)
+
+    - **limit**: Maximum number of items to return (1-50, default: 10)
+    """
+    service = DashboardService(db)
+    return await service.get_execution_rank(limit=limit)

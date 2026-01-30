@@ -104,3 +104,17 @@ class DashboardService:
             "completionRate": round(completion_rate, 2),
             "avgDuration": round(avg_duration, 1),
         }
+
+    async def get_execution_rank(self, limit: int = 10) -> Dict[str, Any]:
+        """
+        Get execution time ranking by app name (all history)
+
+        Args:
+            limit: Maximum number of items to return (default: 10)
+        """
+        rank_data = await self.log_service.get_execution_rank(limit=limit)
+
+        return {
+            "items": rank_data,
+            "generated_at": datetime.utcnow().isoformat(),
+        }
