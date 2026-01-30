@@ -146,7 +146,7 @@ export interface PerformanceTrends {
 
 export interface ExecutionRank {
   app_name: string;
-  avg_duration: number;
+  total_duration: number;
   execution_count: number;
 }
 

@@ -284,7 +284,7 @@ export default function Dashboard() {
                   </span>
                 </div>
                 <span className="text-sm font-medium text-slate-900 dark:text-white ml-2">
-                  {formatDuration(item.avg_duration)}
+                  {formatDuration(item.total_duration)}
                   <span className="text-slate-400 font-normal ml-1">({item.execution_count}次)</span>
                 </span>
               </div>

@@ -3,7 +3,7 @@ ExecutionLog repository
 """
 from typing import Optional, List, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, func, desc
+from sqlalchemy import select, and_, or_, func, desc, text
 
 from app.models.execution_log import ExecutionLog
 from app.repositories.base import BaseRepository
@@ -321,17 +321,17 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
             limit: Maximum number of items to return (default: 10)
 
         Returns:
-            List of apps sorted by average execution duration (descending)
+            List of apps sorted by total execution duration (descending)
         """
         try:
             query = text("""
                 SELECT
                     app_name,
-                    AVG(duration) as avg_duration,
+                    SUM(duration) as total_duration,
                     COUNT(*) as execution_count
                 FROM execution_logs
                 GROUP BY app_name
-                ORDER BY avg_duration DESC
+                ORDER BY total_duration DESC
                 LIMIT :limit
             """)
 
@@ -341,7 +341,7 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
             return [
                 {
                     "app_name": row[0] or "",
-                    "avg_duration": round(float(row[1]), 1) if row[1] else 0,
+                    "total_duration": round(float(row[1]), 1) if row[1] else 0,
                     "execution_count": int(row[2]) if row[2] else 0,
                 }
                 for row in rows
