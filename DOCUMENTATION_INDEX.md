@@ -98,15 +98,15 @@ pnpm dev
 
 **访问应用**
 - 前端：http://localhost:3000
-- API文档：http://localhost:8888/docs
+- API文档：http://localhost:8000/docs
 
 **API测试**
 ```bash
 # 获取账号列表
-curl http://localhost:8888/api/v1/accounts
+curl http://localhost:8000/api/v1/accounts
 
 # 创建任务
-curl -X POST http://localhost:8888/api/v1/tasks \
+curl -X POST http://localhost:8000/api/v1/tasks \
   -H "Content-Type: application/json" \
   -d '{"task_name":"test","shadow_bot_account":"bot1","host_ip":"192.168.1.1","app_name":"test_app"}'
 ```
@@ -114,7 +114,7 @@ curl -X POST http://localhost:8888/api/v1/tasks \
 ## 🔍 常见问题
 
 ### Q: 前端页面空白？
-**A**: 检查后端服务是否启动在 http://localhost:8888
+**A**: 检查后端服务是否启动在 http://localhost:8000
 
 ### Q: API请求失败？
 **A**: 
