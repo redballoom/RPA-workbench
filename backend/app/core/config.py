@@ -13,8 +13,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "RPA Workbench Backend"
 
-    # Database Configuration - use absolute path
-    DATABASE_URL: str = "sqlite+aiosqlite:////home/redballooon/Desktop/claude_code_projects/RPA-workbench/backend/rpa_app.db"
+    # Database Configuration - use relative path for portability
+    DATABASE_URL: str = "sqlite+aiosqlite:///./rpa_app.db"
 
     # JWT Configuration
     SECRET_KEY: str = "your-secret-key-change-in-production"
