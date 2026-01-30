@@ -22,7 +22,7 @@ class ExecutionLogBase(BaseModel):
 
 class ExecutionLogCreate(ExecutionLogBase):
     """Schema for creating an execution log"""
-    status: LogStatus = Field(default=LogStatus.running, description="Execution status")
+    status: LogStatus = Field(default=LogStatus.completed, description="Execution status")
     log_info: bool = Field(default=False, description="Has log info")
     screenshot: bool = Field(default=False, description="Has screenshot")
     # 新增字段

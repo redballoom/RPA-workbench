@@ -213,8 +213,7 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
         try:
             from datetime import datetime, timedelta
 
-            # Convert string to datetime if needed
-            # 假设传入的时间是北京时间 (UTC+8)，转换为 UTC 时间存储
+            # 直接存储传入的时间（北京时间），不做时区转换
             if isinstance(start_time, str):
                 # 尝试解析时间字符串
                 start_time_str = start_time.replace("Z", "+00:00")
@@ -223,8 +222,6 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
                 except ValueError:
                     # 尝试简单格式 (YYYY-MM-DD HH:MM:SS)
                     start_time = datetime.strptime(start_time[:19], "%Y-%m-%d %H:%M:%S")
-                # 北京时间转 UTC (减去 8 小时)
-                start_time = start_time - timedelta(hours=8)
 
             if isinstance(end_time, str):
                 end_time_str = end_time.replace("Z", "+00:00")
@@ -232,8 +229,6 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
                     end_time = datetime.fromisoformat(end_time_str)
                 except ValueError:
                     end_time = datetime.strptime(end_time[:19], "%Y-%m-%d %H:%M:%S")
-                # 北京时间转 UTC (减去 8 小时)
-                end_time = end_time - timedelta(hours=8)
 
             log_data = {
                 "text": text,

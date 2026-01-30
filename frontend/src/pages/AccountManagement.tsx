@@ -347,13 +347,17 @@ export default function AccountManagement() {
                               ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
                               : account.status === "completed"
                               ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                              : account.status === "failed"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
                               : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
                           }`}
                         >
                           {account.status === "running"
                             ? "运行中"
                             : account.status === "completed"
-                            ? "已完成"
+                            ? "成功"
+                            : account.status === "failed"
+                            ? "失败"
                             : "待启动"}
                         </span>
                       </td>

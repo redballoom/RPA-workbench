@@ -25,7 +25,7 @@ export interface Account {
   host_ip: string;
   port: number;  // 连接端口
   recent_app?: string | null;
-  status: 'pending' | 'completed' | 'running';
+  status: 'pending' | 'completed' | 'failed' | 'running';
   end_time?: string | null;
   task_control: string;
   task_count: number;  // 绑定任务数

@@ -8,9 +8,10 @@ from enum import Enum
 
 
 class AccountStatus(str, Enum):
-    """Account status enum"""
+    """Account status enum - 反映最近任务执行结果"""
     pending = "pending"
     completed = "completed"
+    failed = "failed"
     running = "running"
 
 
