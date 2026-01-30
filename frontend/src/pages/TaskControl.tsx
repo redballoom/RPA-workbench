@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TerminalSquare, Play, Square, Search, Settings, FileText, Calendar, Plus, X, AlertCircle, Trash2, Loader2, Wifi } from "lucide-react";
+import { TerminalSquare, Play, Square, Search, Settings, FileText, Calendar, Plus, X, AlertCircle, Trash2, Loader2, Wifi, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { tasksApi, accountsApi, Task, Account, ApiError } from "../lib/api";
 import { useSSE, SSEEvent } from "../hooks/useSSE";
@@ -419,6 +419,22 @@ export default function TaskControl() {
     }
   };
 
+  // 强制停止 - 直接更新状态
+  const handleForceStop = async (task: Task) => {
+    if (!confirm(`确定要强制停止任务 "${task.task_name}" 吗？\n\n此操作将直接更新状态为"待启动"，不等待影刀确认。`)) {
+      return;
+    }
+
+    try {
+      await tasksApi.forceStop(task.id);
+      toast.success("任务已强制停止");
+      loadTasks(); // 刷新列表
+    } catch (error) {
+      console.error('Failed to force stop task:', error);
+      toast.error("强制停止失败");
+    }
+  };
+
   const openEditModal = (task: Task) => {
     setSelectedTask(task);
     setFormData({
@@ -604,13 +620,24 @@ export default function TaskControl() {
                               <Play className="h-4 w-4" />
                             </button>
                           ) : (
-                            <button
-                              onClick={() => handleStopTask(task)}
-                              className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                              aria-label="停止"
-                            >
-                              <Square className="h-4 w-4" />
-                            </button>
+                            <>
+                              <button
+                                onClick={() => handleStopTask(task)}
+                                className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300"
+                                aria-label="停止"
+                                title="发送停止请求，等待确认"
+                              >
+                                <Square className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleForceStop(task)}
+                                className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                                aria-label="强制停止"
+                                title="直接停止，不等待回调"
+                              >
+                                <Zap className="h-4 w-4" />
+                              </button>
+                            </>
                           )}
                           <button
                             onClick={() => openEditModal(task)}

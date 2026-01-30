@@ -141,3 +141,20 @@ async def stop_task(
     """
     service = TaskService(db)
     return await service.stop_task(task_id)
+
+
+@router.post("/{task_id}/force-stop", response_model=TaskStopResponse)
+async def force_stop_task(
+    task_id: str,
+    force: bool = Query(True, description="是否强制停止（忽略代理请求结果）"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Force stop a running task
+
+    直接更新任务和账号状态为 pending，不等待影刀回调。
+    - 若 force=True: 立即更新状态，忽略代理请求结果
+    - 若 force=False: 先发送代理请求，失败则回退到强制模式
+    """
+    service = TaskService(db)
+    return await service.force_stop_task(task_id, force=force)

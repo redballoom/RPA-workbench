@@ -364,6 +364,23 @@ export const tasksApi = {
       method: 'POST',
     });
   },
+
+  // 强制停止任务
+  async forceStop(id: string): Promise<{
+    success: boolean;
+    message: string;
+    task_id: string;
+    status: string;
+  }> {
+    return request<{
+      success: boolean;
+      message: string;
+      task_id: string;
+      status: string;
+    }>(`/tasks/${id}/force-stop?force=true`, {
+      method: 'POST',
+    });
+  },
 };
 
 // ==================== 执行日志 API ====================

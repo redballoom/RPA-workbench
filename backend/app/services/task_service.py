@@ -293,6 +293,87 @@ class TaskService:
             status=TaskStatus.running,  # 保持 running 状态，等待确认
         )
 
+    async def force_stop_task(self, task_id: str, force: bool = True) -> TaskStopResponse:
+        """
+        强制停止任务 - 直接更新状态，不等待回调
+
+        Args:
+            task_id: 任务 ID
+            force: 是否强制模式（默认 True）
+        """
+        from fastapi import HTTPException
+
+        task = await self.repo.get(task_id)
+        if not task:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "NOT_FOUND",
+                    "message": f"Task with ID '{task_id}' not found",
+                },
+            )
+
+        if task.status != TaskStatus.running.value:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "TASK_NOT_RUNNING",
+                    "message": "Task is not running",
+                },
+            )
+
+        # 获取关联账号的端口信息
+        accounts = await self.account_repo.get_by_shadow_bot_account_list(task.shadow_bot_account)
+        account = accounts[0] if accounts else None
+
+        # 可选：发送停止代理请求（即使失败也继续）
+        if force and account:
+            try:
+                await self._send_control_request(
+                    backend_ip=account.host_ip,
+                    backend_port=account.port,
+                    task_name=task.task_name,
+                    target="ALL",
+                )
+                print(f"[强制停止] 代理请求已发送: {task_id}")
+            except Exception as e:
+                print(f"[强制停止] 代理请求失败（不影响状态更新）: {e}")
+
+        # 直接更新任务状态为 pending
+        await self.repo.update(task_id, {"status": TaskStatus.pending.value})
+        print(f"[强制停止] 任务状态已更新为 pending: {task_id}")
+
+        # 更新关联账号状态
+        if account:
+            await self.account_repo.update(
+                account.id,
+                {
+                    "status": TaskStatus.pending.value,
+                    "recent_app": task.app_name,
+                }
+            )
+            print(f"[强制停止] 账号状态已更新: {account.shadow_bot_account}")
+
+        # SSE 广播
+        try:
+            from app.services.sse_service import sse_service
+            await sse_service.broadcast({
+                "type": "task_updated",
+                "data": {
+                    "shadow_bot_account": task.shadow_bot_account,
+                    "app_name": task.app_name,
+                    "changes": {"status": "pending"}
+                }
+            })
+        except Exception as e:
+            print(f"[强制停止] SSE 广播失败: {e}")
+
+        return TaskStopResponse(
+            message="任务已强制停止",
+            task_id=task_id,
+            status=TaskStatus.pending,
+        )
+
     async def get_task_stats(self) -> Dict[str, int]:
         """Get task statistics by status"""
         stats = {}

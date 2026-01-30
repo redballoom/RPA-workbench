@@ -274,18 +274,26 @@ export default function Dashboard() {
               <MoreHorizontal className="h-5 w-5 text-slate-500 dark:text-slate-400" />
             </button>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
+            {/* 表头 */}
+            <div className="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400 px-2">
+              <span className="w-5">#</span>
+              <span className="flex-1">应用</span>
+              <span className="w-20 text-right">时间/m</span>
+              <span className="w-16 text-right">次数</span>
+            </div>
+            {/* 数据行 */}
             {executionRank.map((item, index) => (
-              <div key={item.app_name} className="flex items-center justify-between">
-                <div className="flex items-center min-w-0 flex-1">
-                  <span className="text-slate-400 mr-2 text-sm w-5">{index + 1}</span>
-                  <span className="truncate text-sm text-slate-700 dark:text-slate-300">
-                    {item.app_name}
-                  </span>
-                </div>
-                <span className="text-sm font-medium text-slate-900 dark:text-white ml-2">
-                  {formatDuration(item.total_duration)}
-                  <span className="text-slate-400 font-normal ml-1">({item.execution_count}次)</span>
+              <div key={item.app_name} className="flex items-center justify-between px-2">
+                <span className="text-slate-400 text-sm w-5">{index + 1}</span>
+                <span className="truncate text-sm text-slate-700 dark:text-slate-300 flex-1">
+                  {item.app_name}
+                </span>
+                <span className="text-sm font-medium text-slate-900 dark:text-white w-20 text-right">
+                  {Math.round(item.total_duration / 60)}
+                </span>
+                <span className="text-sm text-slate-600 dark:text-slate-400 w-16 text-right">
+                  {item.execution_count}
                 </span>
               </div>
             ))}

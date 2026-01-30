@@ -59,17 +59,13 @@ class DashboardService:
         Get performance trends over time
 
         Args:
-            days: Number of days to analyze
+            days: Number of days to analyze (kept for API compatibility, but uses all data)
             timezone: Timezone for grouping ('UTC' or 'Asia/Shanghai')
         """
-        # Get date range
-        end_date = datetime.utcnow()
-        start_date = end_date - timedelta(days=days)
-
-        # Get aggregated data (使用北京时间分组)
+        # 使用全部历史数据（不做时间范围限制，避免时区问题）
         daily_stats = await self.log_service.get_daily_stats(
-            start_date=start_date,
-            end_date=end_date,
+            start_date=None,  # 不限制开始时间
+            end_date=None,    # 不限制结束时间
             timezone=timezone,
         )
 

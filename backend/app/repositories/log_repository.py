@@ -262,20 +262,27 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
         Get daily statistics for performance trends
 
         Args:
-            start_date: Start datetime
-            end_date: End datetime
+            start_date: Start datetime (optional, if None no limit)
+            end_date: End datetime (optional, if None no limit)
             timezone: Timezone for grouping ('UTC' or 'Asia/Shanghai')
         """
         try:
             from sqlalchemy import text
 
-            # 根据时区选择日期分组方式
-            if timezone == "Asia/Shanghai":
-                # 加 8 小时转换为北京时间再按日期分组
-                date_expr = "strftime('%Y-%m-%d', datetime(start_time, '+8 hours'))"
-            else:
-                # UTC 时间分组（默认）
-                date_expr = "strftime('%Y-%m-%d', start_time)"
+            # 数据库存储的是北京时间（+8:00），直接按原时间分组
+            date_expr = "strftime('%Y-%m-%d', start_time)"
+
+            # 动态构建 WHERE 条件
+            conditions = []
+            params = {}
+            if start_date:
+                conditions.append("start_time >= :start_date")
+                params["start_date"] = start_date
+            if end_date:
+                conditions.append("start_time < :end_date")
+                params["end_date"] = end_date
+
+            where_clause = " AND ".join(conditions) if conditions else "1=1"
 
             query = text(f"""
                 SELECT
@@ -285,7 +292,7 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
                     SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
                     AVG(duration) as avg_duration
                 FROM execution_logs
-                WHERE start_time >= :start_date AND start_time < :end_date
+                WHERE {where_clause}
                 GROUP BY {date_expr}
                 ORDER BY date
             """)
