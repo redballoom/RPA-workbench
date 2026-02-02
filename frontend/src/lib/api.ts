@@ -6,7 +6,7 @@
  * 浏览器会自动缓存图片和日志内容，减少 OSS 请求流量
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888/api/v1';
 
 // 通用API响应类型
 interface ApiResponse<T> {
