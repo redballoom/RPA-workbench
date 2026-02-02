@@ -33,13 +33,9 @@ class DashboardService:
         log_stats = await self.log_service.get_log_stats()
         success_rate = await self.log_service.get_success_rate()
 
-        # 合并任务状态：pending/running 来自任务表，completed/failed 来自执行日志
-        merged_task_stats = {
-            "pending": task_stats.get("pending", 0),
-            "running": task_stats.get("running", 0),
-            "completed": log_stats.get("completed", 0),
-            "failed": log_stats.get("failed", 0),
-        }
+        # 统计已完成/失败的任务数（从执行日志）
+        completed_count = log_stats.get("completed", 0)
+        failed_count = log_stats.get("failed", 0)
 
         return {
             "accounts": {
@@ -48,7 +44,9 @@ class DashboardService:
             },
             "tasks": {
                 "total": await self.task_service.get_total_count(),
-                "by_status": merged_task_stats,
+                "by_status": task_stats,  # 保持原样：pending/running
+                "completed_count": completed_count,   # 新增：已完成次数
+                "failed_count": failed_count,         # 新增：失败次数
             },
             "execution_logs": {
                 "total": await self.log_service.get_total_count(),

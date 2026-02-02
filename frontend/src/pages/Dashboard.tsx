@@ -118,12 +118,10 @@ export default function Dashboard() {
     value: stat.totalExecutions
   })) || [];
 
-  // 准备状态分布数据
+  // 准备状态分布数据（只显示任务表中的状态：pending/running）
   const statusData = stats ? [
-    { name: '已完成', value: stats.tasks.by_status.completed, color: '#10b981' },
-    { name: '运行中', value: stats.tasks.by_status.running, color: '#3b82f6' },
     { name: '待启动', value: stats.tasks.by_status.pending, color: '#f59e0b' },
-    { name: '已失败', value: stats.tasks.by_status.failed, color: '#ef4444' },
+    { name: '运行中', value: stats.tasks.by_status.running, color: '#3b82f6' },
   ].filter(item => item.value > 0) : [];
 
   if (loading) {
@@ -199,7 +197,7 @@ export default function Dashboard() {
             <div>
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">已完成任务</p>
               <h3 className="text-2xl font-bold mt-1 text-slate-900 dark:text-white">
-                {stats?.tasks.by_status.completed || 0}
+                {stats?.tasks.completed_count || 0}
               </h3>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
@@ -346,9 +344,12 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-2 gap-2 mt-2">
             {statusData.map((item) => (
-              <div key={item.name} className="flex items-center">
-                <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
-                <span className="text-sm text-slate-700 dark:text-slate-300">{item.name}</span>
+              <div key={item.name} className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
+                  <span className="text-sm text-slate-700 dark:text-slate-300">{item.name}</span>
+                </div>
+                <span className="text-sm font-medium text-slate-900 dark:text-white">{item.value}</span>
               </div>
             ))}
           </div>
