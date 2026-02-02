@@ -195,10 +195,15 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">已完成任务</p>
-              <h3 className="text-2xl font-bold mt-1 text-slate-900 dark:text-white">
-                {stats?.tasks.completed_count || 0}
-              </h3>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">执行统计</p>
+              <div className="flex items-baseline gap-2 mt-1">
+                <h3 className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  {stats?.tasks.completed_count || 0}
+                </h3>
+                <span className="text-sm text-red-500 dark:text-red-400">
+                  / {stats?.tasks.failed_count || 0}
+                </span>
+              </div>
             </div>
             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
               <LayoutDashboard className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -206,7 +211,7 @@ export default function Dashboard() {
           </div>
           <div className="mt-4 flex items-center text-green-600 dark:text-green-400 text-sm font-medium">
             <span className="mr-1">✓ {stats?.execution_logs.success_rate.toFixed(1) || 0}%</span>
-            <span className="text-slate-500 dark:text-slate-400 font-normal">执行成功率</span>
+            <span className="text-slate-500 dark:text-slate-400 font-normal">成功率</span>
           </div>
         </div>
 
