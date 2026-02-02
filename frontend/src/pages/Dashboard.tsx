@@ -186,10 +186,6 @@ export default function Dashboard() {
               <TerminalSquare className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
             </div>
           </div>
-          <div className="mt-4 flex items-center text-green-600 dark:text-green-400 text-sm font-medium">
-            <span className="mr-1">↗ {((performance?.completionRate || 0) * 100).toFixed(0)}%</span>
-            <span className="text-slate-500 dark:text-slate-400 font-normal">成功率</span>
-          </div>
         </div>
 
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
@@ -229,7 +225,7 @@ export default function Dashboard() {
           </div>
           <div className="mt-4 flex items-center text-slate-500 dark:text-slate-400 text-sm font-medium">
             <span className="mr-1">⏱</span>
-            <span className="font-normal">最近7天</span>
+            <span className="font-normal">全部历史</span>
           </div>
         </div>
       </div>
