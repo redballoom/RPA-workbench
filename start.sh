@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # 配置
-BACKEND_PORT=8000
+BACKEND_PORT=8888
 FRONTEND_PORT=3000
 BACKEND_DIR="backend"
 FRONTEND_DIR="frontend"
@@ -73,7 +73,7 @@ start_backend() {
     # 启动后端
     cd $BACKEND_DIR
     source venv/bin/activate
-    nohup uvicorn app.main:app --reload --port $BACKEND_PORT > /tmp/backend.log 2>&1 &
+    nohup uvicorn app.main:app --reload --host 0.0.0.0 --port $BACKEND_PORT > /tmp/backend.log 2>&1 &
     BACKEND_PID=$!
 
     # 等待后端启动

@@ -2,6 +2,7 @@
 **Use Chinese to answer**
 **数据库在 /home/redballooon/Desktop/claude_code_projects/RPA-workbench/backend/rpa_app.db**
 **当用户需要更新修改到远程仓库的化，请执行本地的ssh git 命令的方式 将修改推送到 github 其ssh仓库地址是：git@github.com:redballoom/RPA-workbench.git  其http仓库地址是：https://github.com/redballoom/RPA-workbench.git**
+**每次修改后检查前后端服务的连接，确保前端服务都能正常访问**
  
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 

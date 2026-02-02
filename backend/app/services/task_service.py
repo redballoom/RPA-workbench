@@ -118,7 +118,7 @@ class TaskService:
         return TaskResponse.model_validate(task)
 
     async def update_task(self, task_id: str, task_in: TaskUpdate) -> Optional[TaskResponse]:
-        """Update an existing task"""
+        """Update an existing task and sync task_count"""
         task = await self.repo.get(task_id)
         if not task:
             from fastapi import HTTPException
@@ -130,10 +130,22 @@ class TaskService:
                 },
             )
 
+        # 记录修改前的账号
+        old_shadow_bot_account = task.shadow_bot_account
+
         # Filter out None values for update
         update_data = {k: v for k, v in task_in.model_dump().items() if v is not None}
 
         updated_task = await self.repo.update(task_id, update_data)
+
+        # 检查是否修改了 shadow_bot_account
+        new_shadow_bot_account = task_in.shadow_bot_account
+        if new_shadow_bot_account and new_shadow_bot_account != old_shadow_bot_account:
+            # 同步原账号和新账号的 task_count
+            await self._sync_task_count(old_shadow_bot_account)
+            await self._sync_task_count(new_shadow_bot_account)
+            print(f"[更新任务] 账号从 '{old_shadow_bot_account}' 改为 '{new_shadow_bot_account}'")
+
         return TaskResponse.model_validate(updated_task)
 
     async def delete_task(self, task_id: str) -> bool:

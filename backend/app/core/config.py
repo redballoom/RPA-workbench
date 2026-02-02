@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     # Security
     ALLOWED_HOSTS: list[str] = ["*"]
 
-    # CORS Configuration
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    # CORS Configuration - allow all origins for LAN access
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "*"]
 
     # Intranet Proxy Configuration (内网穿透配置)
     INTRANET_PROXY_BASE_URL: str = "https://qn-v.xf5920.cn/yingdao"
