@@ -81,7 +81,9 @@ export function getResourceUrl(path?: string | null): string {
 
   // 如果是本地路径，添加本地服务器地址
   // path 格式: "/static/uploads/screenshots/2026/01/27/xxx.png"
-  return path.startsWith('/') ? `http://localhost:8000${path}` : path;
+  // 从 API_BASE_URL 提取基础地址，确保端口一致
+  const baseUrl = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+  return path.startsWith('/') ? `${baseUrl}${path}` : path;
 }
 
 // 获取资源下载 URL（不缓存，确保获取最新版本）
@@ -94,7 +96,9 @@ export function getDownloadUrl(path?: string | null): string {
   }
 
   // 如果是本地路径，添加本地服务器地址
-  return path.startsWith('/') ? `http://localhost:8000${path}` : path;
+  // 从 API_BASE_URL 提取基础地址，确保端口一致
+  const baseUrl = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+  return path.startsWith('/') ? `${baseUrl}${path}` : path;
 }
 
 // 兼容旧函数名
