@@ -325,8 +325,7 @@ export default function Dashboard() {
                   outerRadius={80}
                   paddingAngle={5}
                   dataKey="value"
-                  label={({ name, value }) => `${name}: ${value}个`}
-                  labelLine={false}
+                  label={false}
                 >
                   {statusData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -345,14 +344,11 @@ export default function Dashboard() {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="grid grid-cols-1 gap-2 mt-2">
+          <div className="grid grid-cols-2 gap-2 mt-2">
             {statusData.map((item) => (
-              <div key={item.name} className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
-                  <span className="text-sm text-slate-700 dark:text-slate-300">{item.name}</span>
-                </div>
-                <span className="text-sm font-medium text-slate-900 dark:text-white">{item.value} 个</span>
+              <div key={item.name} className="flex items-center">
+                <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
+                <span className="text-sm text-slate-700 dark:text-slate-300">{item.name}</span>
               </div>
             ))}
           </div>
