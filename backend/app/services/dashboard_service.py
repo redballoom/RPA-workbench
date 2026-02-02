@@ -26,12 +26,20 @@ class DashboardService:
         # Account stats
         account_stats = await self.account_service.get_account_stats()
 
-        # Task stats
+        # Task stats (only pending/running - task itself status)
         task_stats = await self.task_service.get_task_stats()
 
-        # Log stats
+        # Log stats (completed/failed - execution result)
         log_stats = await self.log_service.get_log_stats()
         success_rate = await self.log_service.get_success_rate()
+
+        # 合并任务状态：pending/running 来自任务表，completed/failed 来自执行日志
+        merged_task_stats = {
+            "pending": task_stats.get("pending", 0),
+            "running": task_stats.get("running", 0),
+            "completed": log_stats.get("completed", 0),
+            "failed": log_stats.get("failed", 0),
+        }
 
         return {
             "accounts": {
@@ -40,7 +48,7 @@ class DashboardService:
             },
             "tasks": {
                 "total": await self.task_service.get_total_count(),
-                "by_status": task_stats,
+                "by_status": merged_task_stats,
             },
             "execution_logs": {
                 "total": await self.log_service.get_total_count(),
