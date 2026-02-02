@@ -280,22 +280,31 @@ export default function Dashboard() {
               <span className="flex-1">应用</span>
               <span className="w-20 text-right">时间/m</span>
               <span className="w-16 text-right">次数</span>
+              <span className="w-16 text-right">趋势</span>
             </div>
             {/* 数据行 */}
-            {executionRank.map((item, index) => (
-              <div key={item.app_name} className="flex items-center justify-between px-2">
-                <span className="text-slate-400 text-sm w-5">{index + 1}</span>
-                <span className="truncate text-sm text-slate-700 dark:text-slate-300 flex-1">
-                  {item.app_name}
-                </span>
-                <span className="text-sm font-medium text-slate-900 dark:text-white w-20 text-right">
-                  {Math.round(item.total_duration / 60)}
-                </span>
-                <span className="text-sm text-slate-600 dark:text-slate-400 w-16 text-right">
-                  {item.execution_count}
-                </span>
-              </div>
-            ))}
+            {executionRank.map((item, index) => {
+              const trend = item.trend_percent || 0;
+              const trendColor = trend > 0 ? 'text-green-600 dark:text-green-400' : trend < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400';
+              const trendIcon = trend > 0 ? '↑' : trend < 0 ? '↓' : '→';
+              return (
+                <div key={item.app_name} className="flex items-center justify-between px-2">
+                  <span className="text-slate-400 text-sm w-5">{index + 1}</span>
+                  <span className="truncate text-sm text-slate-700 dark:text-slate-300 flex-1">
+                    {item.app_name}
+                  </span>
+                  <span className="text-sm font-medium text-slate-900 dark:text-white w-20 text-right">
+                    {Math.round(item.total_duration / 60)}
+                  </span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400 w-16 text-right">
+                    {item.execution_count}
+                  </span>
+                  <span className={`text-sm font-medium w-16 text-right ${trendColor}`}>
+                    {trendIcon} {Math.abs(trend)}%
+                  </span>
+                </div>
+              );
+            })}
           </div>
           {executionRank.length === 0 && (
             <div className="flex flex-col items-center justify-center py-8 text-center">

@@ -152,6 +152,7 @@ export interface ExecutionRank {
   app_name: string;
   total_duration: number;
   execution_count: number;
+  trend_percent: number;  // 环比变化百分比（正数上升，负数下降）
 }
 
 export interface ExecutionRankResponse {

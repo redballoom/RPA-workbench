@@ -322,37 +322,70 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
         limit: int = 10,
     ) -> List[Dict[str, Any]]:
         """
-        Get execution time ranking by app name (all history)
+        Get execution time ranking by app name with trend data
 
         Args:
             limit: Maximum number of items to return (default: 10)
 
         Returns:
             List of apps sorted by total execution duration (descending)
+            Includes trend data (comparison with previous period)
         """
         try:
-            query = text("""
+            # 当前周期（最近7天）的统计数据
+            current_query = text("""
                 SELECT
                     app_name,
                     SUM(duration) as total_duration,
                     COUNT(*) as execution_count
                 FROM execution_logs
+                WHERE start_time >= datetime('now', '-7 days')
                 GROUP BY app_name
                 ORDER BY total_duration DESC
                 LIMIT :limit
             """)
 
-            result = await self.db.execute(query, {"limit": limit})
-            rows = result.fetchall()
+            # 前一周期（7天前到14天前）的统计数据
+            previous_query = text("""
+                SELECT
+                    app_name,
+                    COUNT(*) as execution_count
+                FROM execution_logs
+                WHERE start_time BETWEEN datetime('now', '-14 days') AND datetime('now', '-7 days')
+                GROUP BY app_name
+            """)
 
-            return [
-                {
-                    "app_name": row[0] or "",
+            result = await self.db.execute(current_query, {"limit": limit})
+            current_rows = result.fetchall()
+
+            prev_result = await self.db.execute(previous_query)
+            prev_rows = prev_result.fetchall()
+
+            # 构建前一周期数据的字典
+            prev_data = {row[0] or "": int(row[1]) if row[1] else 0 for row in prev_rows}
+
+            results = []
+            for row in current_rows:
+                app_name = row[0] or ""
+                current_count = int(row[2]) if row[2] else 0
+                prev_count = prev_data.get(app_name, 0)
+
+                # 计算趋势百分比
+                if prev_count > 0:
+                    trend_percent = round(((current_count - prev_count) / prev_count) * 100, 1)
+                elif current_count > 0:
+                    trend_percent = 100.0  # 从0变为有数据
+                else:
+                    trend_percent = 0.0
+
+                results.append({
+                    "app_name": app_name,
                     "total_duration": round(float(row[1]), 1) if row[1] else 0,
-                    "execution_count": int(row[2]) if row[2] else 0,
-                }
-                for row in rows
-            ]
+                    "execution_count": current_count,
+                    "trend_percent": trend_percent,
+                })
+
+            return results
         except Exception as e:
             await self.db.rollback()
             raise
