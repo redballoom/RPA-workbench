@@ -6,7 +6,10 @@
  * 浏览器会自动缓存图片和日志内容，减少 OSS 请求流量
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+if (!API_BASE_URL) {
+  throw new Error('VITE_API_BASE_URL 环境变量未设置，请检查 .env 文件');
+}
 
 // 通用API响应类型
 interface ApiResponse<T> {
@@ -431,8 +434,8 @@ export const dashboardApi = {
   },
 
   // 获取性能趋势
-  async getPerformance(days: number = 7): Promise<PerformanceTrends> {
-    return request<PerformanceTrends>(`/dashboard/performance?days=${days}`);
+  async getPerformance(days: number = 7, dimension: 'day' | 'month' = 'day'): Promise<PerformanceTrends> {
+    return request<PerformanceTrends>(`/dashboard/performance?days=${days}&dimension=${dimension}`);
   },
 
   // 获取执行时间排行榜

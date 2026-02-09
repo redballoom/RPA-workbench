@@ -25,18 +25,20 @@ async def get_dashboard_stats(
 
 @router.get("/performance")
 async def get_performance_trends(
-    days: int = Query(default=7, ge=1, le=30, description="Number of days to analyze"),
+    days: int = Query(default=7, ge=1, le=365, description="Number of days to analyze"),
+    dimension: str = Query(default="day", description="Dimension: 'day' or 'month'"),
     timezone: str = Query(default="Asia/Shanghai", description="Timezone for grouping: 'UTC' or 'Asia/Shanghai'"),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Get performance trends over time
 
-    - **days**: Number of days to analyze (1-30)
+    - **days**: Number of days to analyze (1-365)
+    - **dimension**: 'day' (default) or 'month'
     - **timezone**: Timezone for date grouping (default: Asia/Shanghai)
     """
     service = DashboardService(db)
-    return await service.get_performance_trends(days=days, timezone=timezone)
+    return await service.get_performance_trends(days=days, timezone=timezone, dimension=dimension)
 
 
 @router.get("/execution-rank")

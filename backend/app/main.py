@@ -56,8 +56,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         raise
 
     print(f"✅ Application started successfully")
-    print(f"📚 API Documentation: http://localhost:8000/docs")
-    print(f"📖 ReDoc: http://localhost:8000/redoc")
+    print(f"📚 API Documentation: {settings.API_V1_STR}/docs")
+    print(f"📖 ReDoc: {settings.API_V1_STR}/redoc")
 
     yield
 
@@ -88,23 +88,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Trusted Host Middleware (security)
+# Trusted Host Middleware (security) - 允许所有主机名以便局域网访问
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=settings.ALLOWED_HOSTS,
+    allowed_hosts=["*"],
 )
 
 
 @app.get("/")
 async def root() -> dict:
     """
-    Root endpoint
+    Root endpoint - redirect to API documentation
     """
-    return {
-        "message": "RPA Workbench Backend API",
-        "version": "1.0.0",
-        "docs": f"{settings.API_V1_STR}/docs",
-    }
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"{settings.API_V1_STR}/docs")
 
 
 @app.get("/health")

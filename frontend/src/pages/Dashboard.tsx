@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Users, TerminalSquare, Clock, MoreHorizontal, Loader2, Wifi } from "lucide-react";
+import { LayoutDashboard, Users, TerminalSquare, Clock, MoreHorizontal, Loader2, Wifi, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { dashboardApi, logsApi, ExecutionLog, DashboardStats, PerformanceTrends, ExecutionRank, ApiError } from "../lib/api";
 import { useSSE, SSEEvent } from "../hooks/useSSE";
@@ -7,6 +7,7 @@ import { useSSE, SSEEvent } from "../hooks/useSSE";
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [performance, setPerformance] = useState<PerformanceTrends | null>(null);
+  const [performanceDimension, setPerformanceDimension] = useState<'day' | 'month'>('day');
   const [recentLogs, setRecentLogs] = useState<ExecutionLog[]>([]);
   const [executionRank, setExecutionRank] = useState<ExecutionRank[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,21 +17,19 @@ export default function Dashboard() {
     heartbeat: true,
   });
 
-  // 加载仪表盘数据
+  // 加载仪表盘数据（不包含性能趋势）
   const loadDashboardData = async () => {
     try {
       setLoading(true);
 
-      // 并行加载所有数据
-      const [statsData, performanceData, logsData, rankData] = await Promise.all([
+      // 并行加载数据（排除性能趋势）
+      const [statsData, logsData, rankData] = await Promise.all([
         dashboardApi.getStats(),
-        dashboardApi.getPerformance(7),
         logsApi.getLogs({ page: 1, page_size: 5 }),
         dashboardApi.getExecutionRank(10),
       ]);
 
       setStats(statsData);
-      setPerformance(performanceData);
       setRecentLogs(logsData.items || []);
       setExecutionRank(rankData.items || []);
     } catch (error) {
@@ -40,6 +39,18 @@ export default function Dashboard() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 加载性能趋势数据
+  const loadPerformanceData = async () => {
+    try {
+      // 月趋势时使用更大的天数范围
+      const days = performanceDimension === 'month' ? 180 : 7;
+      const performanceData = await dashboardApi.getPerformance(days, performanceDimension);
+      setPerformance(performanceData);
+    } catch (error) {
+      console.error('Failed to load performance data:', error);
     }
   };
 
@@ -68,8 +79,15 @@ export default function Dashboard() {
     };
   }, [subscribe]);
 
+  // 加载性能趋势（维度变化时重新加载）
+  useEffect(() => {
+    loadPerformanceData();
+  }, [performanceDimension]);
+
+  // 初始加载
   useEffect(() => {
     loadDashboardData();
+    loadPerformanceData();
   }, []);
 
   // 格式化持续时间（ webhook 传入 duration_seconds 单位为秒，转换为分钟）
@@ -114,7 +132,9 @@ export default function Dashboard() {
 
   // 准备性能趋势图表数据
   const performanceData = performance?.dailyStats.map(stat => ({
-    name: new Date(stat.date).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }),
+    name: performanceDimension === 'month'
+      ? new Date(stat.date + '-01').toLocaleDateString('zh-CN', { year: 'numeric', month: 'short' })
+      : new Date(stat.date).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }),
     value: stat.totalExecutions
   })) || [];
 
@@ -236,9 +256,18 @@ export default function Dashboard() {
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 border border-slate-200 dark:border-slate-700">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">性能趋势</h2>
-            <button className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
-              <MoreHorizontal className="h-5 w-5 text-slate-500 dark:text-slate-400" />
-            </button>
+            {/* 维度选择下拉框 */}
+            <div className="relative">
+              <select
+                value={performanceDimension}
+                onChange={(e) => setPerformanceDimension(e.target.value as 'day' | 'month')}
+                className="appearance-none bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1 pr-8 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              >
+                <option value="day">日趋势</option>
+                <option value="month">月趋势</option>
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+            </div>
           </div>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">

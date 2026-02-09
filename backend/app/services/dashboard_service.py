@@ -60,6 +60,7 @@ class DashboardService:
         self,
         days: int = 7,
         timezone: str = "Asia/Shanghai",
+        dimension: str = "day",
     ) -> Dict[str, Any]:
         """
         Get performance trends over time
@@ -67,12 +68,14 @@ class DashboardService:
         Args:
             days: Number of days to analyze (kept for API compatibility, but uses all data)
             timezone: Timezone for grouping ('UTC' or 'Asia/Shanghai')
+            dimension: 'day' for daily, 'month' for monthly
         """
         # 使用全部历史数据（不做时间范围限制，避免时区问题）
         daily_stats = await self.log_service.get_daily_stats(
             start_date=None,  # 不限制开始时间
             end_date=None,    # 不限制结束时间
             timezone=timezone,
+            dimension=dimension,
         )
 
         # Format response

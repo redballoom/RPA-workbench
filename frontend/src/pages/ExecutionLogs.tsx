@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Clock,
   Search,
@@ -24,6 +24,12 @@ export default function ExecutionLogs() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [exporting, setExporting] = useState(false);
 
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
   // 排序状态
   const [sortBy, setSortBy] = useState<string>("start_time");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -41,19 +47,39 @@ export default function ExecutionLogs() {
     heartbeat: true,
   });
 
-  // 加载日志列表
-  const loadLogs = async (search?: string, status?: string) => {
+  // 使用 ref 存储最新的状态值，确保 loadLogs 能拿到最新值
+  const pageRef = useRef(currentPage);
+  const pageSizeRef = useRef(pageSize);
+  const searchTermRef = useRef(searchTerm);
+  const statusFilterRef = useRef(statusFilter);
+  const sortByRef = useRef(sortBy);
+  const sortOrderRef = useRef(sortOrder);
+
+  // 同步状态到 ref
+  useEffect(() => {
+    pageRef.current = currentPage;
+    pageSizeRef.current = pageSize;
+    searchTermRef.current = searchTerm;
+    statusFilterRef.current = statusFilter;
+    sortByRef.current = sortBy;
+    sortOrderRef.current = sortOrder;
+  }, [currentPage, pageSize, searchTerm, statusFilter, sortBy, sortOrder]);
+
+  // 加载日志列表（使用 ref 确保拿到最新状态值）
+  const loadLogs = async () => {
     try {
       setLoading(true);
       const response = await logsApi.getLogs({
-        search: search || searchTerm,
-        status: status && status !== "all" ? status : undefined,
-        page: 1,
-        page_size: 100,
-        sort_by: sortBy,
-        order: sortOrder,
+        search: searchTermRef.current || undefined,
+        status: statusFilterRef.current !== "all" ? statusFilterRef.current : undefined,
+        page: pageRef.current,
+        page_size: pageSizeRef.current,
+        sort_by: sortByRef.current,
+        order: sortOrderRef.current,
       });
       setLogs(response.items || []);
+      setTotal(response.total || 0);
+      setTotalPages(response.total_pages || 0);
     } catch (error) {
       console.error('Failed to load logs:', error);
       if (error instanceof ApiError) {
@@ -66,12 +92,119 @@ export default function ExecutionLogs() {
     }
   };
 
+  // 加载日志列表（带参数版本，用于立即生效的场景）
+  const loadLogsWithParams = async (page: number, pageSize: number) => {
+    try {
+      setLoading(true);
+      const response = await logsApi.getLogs({
+        search: searchTermRef.current || undefined,
+        status: statusFilterRef.current !== "all" ? statusFilterRef.current : undefined,
+        page: page,
+        page_size: pageSize,
+        sort_by: sortByRef.current,
+        order: sortOrderRef.current,
+      });
+      setLogs(response.items || []);
+      setTotal(response.total || 0);
+      setTotalPages(response.total_pages || 0);
+      // 同时更新状态
+      setCurrentPage(page);
+      setPageSize(pageSize);
+    } catch (error) {
+      console.error('Failed to load logs:', error);
+      if (error instanceof ApiError) {
+        toast.error(`加载失败: ${error.message}`);
+      } else {
+        toast.error('加载日志列表失败');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 跳转到指定页
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages && page !== currentPage) {
+      // 直接传入当前参数，避免使用可能未更新的 ref
+      loadLogsWithParams(page, pageSizeRef.current);
+    }
+  };
+
+  // 处理每页数量变化
+  const handlePageSizeChange = (newPageSize: number) => {
+    // 使用 loadLogsWithParams 直接传入新参数，确保立即生效
+    loadLogsWithParams(1, newPageSize);
+  };
+
+  // 处理每页数量选择器变化
+  const handlePageSizeSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    handlePageSizeChange(Number(e.target.value));
+  };
+
+  // 智能渲染页码按钮（当前页前后各 2 页）
+  const renderPageNumbers = () => {
+    if (totalPages <= 1) return null;
+
+    const pages: (number | string)[] = [];
+    const current = currentPage;
+    const total = totalPages;
+
+    // 始终显示首页
+    pages.push(1);
+
+    // 如果当前页大于 3，显示省略号
+    if (current > 3) {
+      pages.push('...');
+    }
+
+    // 当前页前后的页码
+    for (let i = Math.max(2, current - 2); i <= Math.min(total - 1, current + 2); i++) {
+      // 避免重复添加首页和末页
+      if (i !== 1 && i !== total) {
+        pages.push(i);
+      }
+    }
+
+    // 如果当前页小于 total-2，显示省略号
+    if (current < total - 2) {
+      pages.push('...');
+    }
+
+    // 始终显示末页（如果 total > 1）
+    if (total > 1) {
+      pages.push(total);
+    }
+
+    return (
+      <>
+        {pages.map((page, index) => (
+          <React.Fragment key={index}>
+            {page === '...' ? (
+              <span className="px-2 text-slate-400">...</span>
+            ) : (
+              <button
+                onClick={() => goToPage(page as number)}
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  page === current
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                }`}
+              >
+                {page}
+              </button>
+            )}
+          </React.Fragment>
+        ))}
+      </>
+    );
+  };
+
   // SSE 事件处理
   useEffect(() => {
     const unsubLog = subscribe('log_created', (event: SSEEvent) => {
       console.log('[执行日志] 收到日志创建事件:', event.data);
       // 刷新日志列表
-      loadLogs(searchTerm, statusFilter);
+      loadLogs();
       toast.info('新执行日志已添加', {
         description: event.data.app_name
           ? `${event.data.app_name} - ${event.data.status === 'completed' ? '成功' : '失败'}`
@@ -82,25 +215,12 @@ export default function ExecutionLogs() {
     return () => {
       unsubLog();
     };
-  }, [subscribe, searchTerm, statusFilter]);
+  }, [subscribe]);
 
   // 初始加载
   useEffect(() => {
     loadLogs();
   }, []);
-
-  const filteredLogs = logs.filter(log => {
-    const matchesSearch =
-      log.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.app_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.shadow_bot_account.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.host_ip.includes(searchTerm) ||
-      log.id.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus = statusFilter === "all" || log.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
-  });
 
   const getStatusInfo = (status: string) => {
     switch (status) {
@@ -181,13 +301,17 @@ export default function ExecutionLogs() {
   };
 
   const handleSearch = (value: string) => {
+    // 先更新 ref，确保 loadLogsWithParams 使用新值
+    searchTermRef.current = value;
+    loadLogsWithParams(1, pageSizeRef.current);
     setSearchTerm(value);
-    loadLogs(value, statusFilter);
   };
 
   const handleStatusFilter = (status: string) => {
+    // 先更新 ref，确保 loadLogsWithParams 使用新值
+    statusFilterRef.current = status;
+    loadLogsWithParams(1, pageSizeRef.current);
     setStatusFilter(status);
-    loadLogs(searchTerm, status);
   };
 
   // 打开截图模态框
@@ -348,16 +472,17 @@ export default function ExecutionLogs() {
               value={`${sortBy}-${sortOrder}`}
               onChange={(e) => {
                 const [field, order] = e.target.value.split('-');
+                // 先更新 ref，确保 loadLogsWithParams 使用新值
+                sortByRef.current = field;
+                sortOrderRef.current = order;
+                loadLogsWithParams(1, pageSizeRef.current);
                 setSortBy(field);
                 setSortOrder(order as "asc" | "desc");
-                loadLogs(searchTerm, statusFilter);
               }}
               className="appearance-none bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm pr-10"
             >
               <option value="start_time-desc">开始时间 (最新优先)</option>
               <option value="start_time-asc">开始时间 (最早优先)</option>
-              <option value="duration-desc">执行时长 (最长优先)</option>
-              <option value="duration-asc">执行时长 (最短优先)</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
               <ChevronDown className="h-4 w-4" />
@@ -419,7 +544,7 @@ export default function ExecutionLogs() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {filteredLogs.map((log) => {
+                {logs.map((log) => {
                   const statusInfo = getStatusInfo(log.status);
 
                   return (
@@ -502,7 +627,67 @@ export default function ExecutionLogs() {
             </table>
           </div>
 
-          {filteredLogs.length === 0 && (
+          {/* 分页控件 */}
+          {total > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+              {/* 每页数量选择器 */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-slate-500 dark:text-slate-400">每页</span>
+                <select
+                  value={pageSize}
+                  onChange={handlePageSizeSelectChange}
+                  className="appearance-none bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white px-3 py-1.5 pr-8 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-sm text-slate-500 dark:text-slate-400">条</span>
+              </div>
+
+              {/* 分页信息 */}
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                共 <span className="font-medium text-slate-900 dark:text-white">{total}</span> 条记录，
+                第 <span className="font-medium text-slate-900 dark:text-white">{currentPage}</span>/<span className="font-medium text-slate-900 dark:text-white">{totalPages}</span> 页
+              </div>
+
+              {/* 页码导航 */}
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={() => goToPage(1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  首页
+                </button>
+                <button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  上一页
+                </button>
+                {/* 页码按钮 - 智能显示 */}
+                {renderPageNumbers()}
+                <button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  下一页
+                </button>
+                <button
+                  onClick={() => goToPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  末页
+                </button>
+              </div>
+            </div>
+          )}
+
+          {logs.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
               <Clock className="h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
               <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-1">暂无执行日志</h3>

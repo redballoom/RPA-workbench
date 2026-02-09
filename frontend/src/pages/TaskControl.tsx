@@ -5,7 +5,10 @@ import { tasksApi, accountsApi, Task, Account, ApiError } from "../lib/api";
 import { useSSE, SSEEvent } from "../hooks/useSSE";
 
 // API 基础地址（用于代理内网穿透请求）
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+if (!API_BASE_URL) {
+  throw new Error('VITE_API_BASE_URL 环境变量未设置，请检查 .env 文件');
+}
 
 export default function TaskControl() {
   const [tasks, setTasks] = useState<Task[]>([]);

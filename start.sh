@@ -82,7 +82,7 @@ start_backend() {
     # 检查后端是否启动成功
     if curl -s http://localhost:$BACKEND_PORT/health > /dev/null 2>&1; then
         echo -e "${GREEN}后端服务启动成功 (PID: $BACKEND_PID)${NC}"
-        echo -e "${GREEN}API 文档: http://localhost:$BACKEND_PORT/docs${NC}"
+        echo -e "${GREEN}API 文档: http://localhost:$BACKEND_PORT/api/v1/docs${NC}"
     else
         echo -e "${RED}后端服务启动失败，请查看日志: /tmp/backend.log${NC}"
         exit 1

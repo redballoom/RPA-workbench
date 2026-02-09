@@ -11,7 +11,10 @@
 
 import { useEffect, useCallback, useState, useRef } from 'react';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+if (!API_BASE_URL) {
+  throw new Error('VITE_API_BASE_URL 环境变量未设置，请检查 .env 文件');
+}
 
 export interface SSEEvent {
   type: 'log_created' | 'account_updated' | 'task_updated' | 'heartbeat' | 'message';

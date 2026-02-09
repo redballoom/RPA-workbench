@@ -366,7 +366,7 @@ class TaskService:
             )
             print(f"[强制停止] 账号状态已更新: {account.shadow_bot_account}")
 
-        # SSE 广播
+        # SSE 广播 - 发送任务更新事件
         try:
             from app.services.sse_service import sse_service
             await sse_service.broadcast({
@@ -377,8 +377,27 @@ class TaskService:
                     "changes": {"status": "pending"}
                 }
             })
+            print(f"[强制停止] 已发送 task_updated 事件: {task.shadow_bot_account}")
         except Exception as e:
-            print(f"[强制停止] SSE 广播失败: {e}")
+            print(f"[强制停止] task_updated SSE 广播失败: {e}")
+
+        # 同时发送 account_updated 事件（解决账号管理页面状态不同步问题）
+        if account:
+            try:
+                await sse_service.broadcast({
+                    "type": "account_updated",
+                    "data": {
+                        "account_id": account.id,
+                        "shadow_bot_account": account.shadow_bot_account,
+                        "changes": {
+                            "status": "pending",
+                            "recent_app": task.app_name
+                        }
+                    }
+                })
+                print(f"[强制停止] 已发送 account_updated 事件: {account.shadow_bot_account}")
+            except Exception as e:
+                print(f"[强制停止] account_updated 事件广播失败: {e}")
 
         return TaskStopResponse(
             message="任务已强制停止",

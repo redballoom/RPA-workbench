@@ -257,20 +257,25 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog, dict, dict]):
         start_date=None,
         end_date=None,
         timezone: str = "Asia/Shanghai",
+        dimension: str = "day",
     ) -> List[Dict[str, Any]]:
         """
-        Get daily statistics for performance trends
+        Get statistics for performance trends (by day or month)
 
         Args:
             start_date: Start datetime (optional, if None no limit)
             end_date: End datetime (optional, if None no limit)
             timezone: Timezone for grouping ('UTC' or 'Asia/Shanghai')
+            dimension: 'day' for daily, 'month' for monthly
         """
         try:
             from sqlalchemy import text
 
-            # 数据库存储的是北京时间（+8:00），直接按原时间分组
-            date_expr = "strftime('%Y-%m-%d', start_time)"
+            # 按 dimension 选择日期格式
+            if dimension == "month":
+                date_expr = "strftime('%Y-%m', start_time)"
+            else:
+                date_expr = "strftime('%Y-%m-%d', start_time)"
 
             # 动态构建 WHERE 条件
             conditions = []
