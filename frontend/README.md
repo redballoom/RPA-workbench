@@ -1,171 +1,136 @@
-# 前端接口修改 - README
+# RPA Workbench 前端
 
-> 最后更新: 2026-01-27
+> 基于 React 18 + TypeScript + Vite 的 RPA 管理平台前端
 
-## 📋 项目概述
+## 技术栈
 
-本项目已完成从前端localStorage到真实API的完整迁移，所有接口与后端API文档 `/doc/new_api.md` 保持一致。
+| 类别 | 技术 |
+|------|------|
+| 框架 | React 18 + TypeScript |
+| 构建工具 | Vite 6 |
+| UI 样式 | TailwindCSS |
+| 图标 | lucide-react |
+| 图表 | recharts |
+| 路由 | react-router-dom |
+| 提示 | sonner |
+| 工具 | tailwind-merge + clsx |
 
-## 🚀 快速开始
+## 快速开始
 
-### 1. 安装依赖
 ```bash
 cd frontend
-pnpm install
+pnpm install          # 安装依赖
+pnpm dev              # 开发服务器 (端口 3000)
+pnpm build            # 构建生产版本
 ```
 
-### 2. 配置环境变量
-创建 `.env` 文件：
+## 项目结构
+
+```
+src/
+├── App.tsx                    # 应用入口 + 路由配置
+├── main.tsx                   # React DOM 渲染
+├── lib/
+│   └── api.ts                 # API 客户端 + 类型定义
+├── hooks/
+│   └── useSSE.ts              # SSE 实时通信 Hook
+├── pages/
+│   ├── Dashboard.tsx          # 仪表盘
+│   ├── AccountManagement.tsx   # 账号管理
+│   ├── TaskControl.tsx         # 任务控制
+│   └── ExecutionLogs.tsx       # 执行日志
+├── components/
+│   ├── Layout.tsx             # 布局组件
+│   ├── Sidebar.tsx            # 侧边栏
+│   ├── StatusBadge.tsx        # 状态徽章
+│   ├── ActionButton.tsx       # 操作按钮
+│   └── Empty.tsx              # 空状态组件
+└── contexts/                  # (预留) 状态管理
+```
+
+## 页面功能
+
+### 仪表盘 (Dashboard)
+
+- **统计卡片**: 总账号数、活跃任务、执行统计（成功/失败）、平均执行时间
+- **性能趋势图**: 日/月维度切换，展示执行次数趋势
+- **任务排行**: 按执行时间排序，显示趋势指示（↑↓）
+- **状态分布**: 饼图展示待启动/运行中任务比例
+- **最近记录**: 最近 5 条执行日志
+
+### 账号管理 (AccountManagement)
+
+- **列表展示**: 机器人账号、IP、端口、状态、最近应用
+- **搜索**: 按账号名/IP/任务控制标识搜索
+- **CRUD**: 添加、编辑、删除账号
+- **状态同步**: 通过 SSE 实时更新账号状态
+
+### 任务控制 (TaskControl)
+
+- **列表展示**: 任务名、账号、应用、状态、配置、备注
+- **搜索**: 按任务名/账号/应用名搜索
+- **CRUD**: 添加、编辑、删除任务
+- **任务操作**: 启动、停止（等待回调）、强制停止
+- **配置管理**: 配置文件上传、配置信息编辑
+- **备注编辑**: 弹窗编辑任务备注（最多 1000 字）
+- **状态同步**: 通过 SSE 实时更新任务状态
+
+### 执行日志 (ExecutionLogs)
+
+- **列表展示**: ID、应用名、账号、状态、时间、执行时长
+- **搜索筛选**: 按关键词搜索、按状态筛选
+- **排序**: 按开始时间排序（升序/降序）
+- **分页**: 可调整每页显示数量（25/50/100）
+- **导出**: CSV 格式导出全部日志
+- **截图查看**: 缩略图 + 缩放模态框（25%-300%）
+- **日志内容**: 查看、复制、下载日志文件
+- **实时更新**: 通过 SSE 自动刷新新日志
+
+## API 接口
+
+### 账号
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| GET | /api/v1/accounts | 账号列表（分页、搜索） |
+| POST | /api/v1/accounts | 创建账号 |
+| GET | /api/v1/accounts/{id} | 获取单个账号 |
+| PUT | /api/v1/accounts/{id} | 更新账号 |
+| DELETE | /api/v1/accounts/{id} | 删除账号 |
+
+### 任务
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| GET | /api/v1/tasks | 任务列表（分页、搜索） |
+| POST | /api/v1/tasks | 创建任务 |
+| GET | /api/v1/tasks/{id} | 获取单个任务 |
+| PUT | /api/v1/tasks/{id} | 更新任务 |
+| DELETE | /api/v1/tasks/{id} | 删除任务 |
+| POST | /api/v1/tasks/{id}/start | 启动任务 |
+| POST | /api/v1/tasks/{id}/stop | 停止任务（等待确认） |
+| POST | /api/v1/tasks/{id}/force-stop | 强制停止任务 |
+
+### 执行日志
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| GET | /api/v1/logs | 日志列表（分页、搜索、筛选、排序） |
+| GET | /api/v1/logs/export | 导出 CSV |
+
+### 仪表盘
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| GET | /api/v1/dashboard/stats | 统计数据 |
+| GET | /api/v1/dashboard/performance | 性能趋势 |
+| GET | /api/v1/dashboard/execution-rank | 执行排行 |
+
+### SSE 实时事件
+| 事件类型 | 说明 |
+|----------|------|
+| log_created | 新建执行日志 |
+| account_updated | 账号状态更新 |
+| task_updated | 任务状态更新 |
+
+## 环境变量
+
 ```bash
 VITE_API_BASE_URL=http://localhost:8888/api/v1
 ```
-
-### 3. 启动开发服务器
-```bash
-pnpm dev
-```
-
-访问：http://localhost:3000
-
-## 📁 文件结构
-
-```
-frontend/
-├── src/
-│   ├── lib/
-│   │   └── api.ts                    # ✅ 统一API客户端
-│   ├── pages/
-│   │   ├── AccountManagement.tsx     # ✅ 账号管理
-│   │   ├── TaskControl.tsx            # ✅ 任务控制
-│   │   ├── Dashboard.tsx              # ✅ 仪表盘
-│   │   └── ExecutionLogs.tsx          # ✅ 执行日志 + 截图/日志展示
-│   └── components/
-│       └── Sidebar.tsx               # 侧边栏
-├── .env                              # ✅ 环境配置
-└── README.md                          # 本文件
-```
-
-## 🔑 核心变更
-
-### 1. 字段命名规范
-统一使用 **snake_case**：
-- `shadowBotAccount` → `shadow_bot_account`
-- `hostIp` → `host_ip`
-- `taskName` → `task_name`
-- `appName` → `app_name`
-- 等等...
-
-### 2. API客户端
-- 文件：`src/lib/api.ts`
-- 功能：15个API端点完整封装
-- 特性：类型安全、错误处理、请求拦截
-
-### 3. 页面修改
-| 页面 | 状态 | 功能 |
-|------|------|------|
-| 账号管理 | ✅ 完成 | CRUD、搜索、分页 |
-| 任务控制 | ✅ 完成 | CRUD、启动/停止、搜索 |
-| 仪表盘 | ✅ 完成 | 统计、图表、实时更新 |
-| 执行日志 | ✅ 完成 | 搜索、筛选、导出、截图展示、日志查看 |
-
-### 4. 截图和日志展示 (2026-01-27 新增)
-| 功能 | 状态 | 说明 |
-|------|------|------|
-| 截图缩略图 | ✅ 完成 | 表格中显示 40x40px 缩略图 |
-| 截图放大模态框 | ✅ 完成 | 支持 25%-300% 缩放 |
-| 日志内容查看 | ✅ 完成 | 从 URL 加载日志内容 |
-| 截图下载 | ✅ 完成 | 支持云端 URL 和本地路径 |
-| 日志复制/下载 | ✅ 完成 | 支持从 URL 加载并下载 |
-| SSE 实时更新 | ✅ 完成 | 新日志自动刷新 |
-
-### 5. 云端资源 URL 处理
-
-```typescript
-// src/lib/api.ts
-
-// ExecutionLog 接口新增字段
-interface ExecutionLog {
-  // ... 现有字段
-  screenshot_path?: string | null;  // 截图 URL 或本地路径
-  log_content?: string | null;      // 日志 URL 或本地内容
-}
-
-// 获取完整 URL（支持云端和本地）
-export function getResourceUrl(path?: string | null): string {
-  if (!path) return '';
-  // 云端 URL 直接返回
-  if (path.startsWith('http')) return path;
-  // 本地路径添加服务器地址
-  return path.startsWith('/') ? `http://localhost:8888${path}` : path;
-}
-```
-
-## 📚 文档
-
-- [FRONTEND_API_MIGRATION.md](FRONTEND_API_MIGRATION.md) - 详细修改说明
-- [FRONTEND_CHANGES_SUMMARY.md](FRONTEND_CHANGES_SUMMARY.md) - 修改总结
-- [VERIFICATION_GUIDE.md](VERIFICATION_GUIDE.md) - 验证指南
-
-## ⚠️ 重要提醒
-
-### 1. 必须启动后端服务
-```bash
-cd backend
-uvicorn app.main:app --reload --port 8888
-```
-
-### 2. 环境变量配置
-确保 `.env` 文件存在且配置正确：
-```bash
-VITE_API_BASE_URL=http://localhost:8888/api/v1
-```
-
-### 3. 字段命名
-所有API调用必须使用snake_case，**禁止使用camelCase**！
-
-## ✅ 验收标准
-
-- [x] 所有页面从localStorage迁移到API
-- [x] 字段命名完全符合snake_case规范
-- [x] 错误处理完善
-- [x] 加载状态正确显示
-- [x] 搜索/筛选功能正常
-- [x] 分页功能正常
-- [x] 导出功能正常
-- [x] 启动/停止任务功能正常
-- [x] 创建/编辑/删除功能正常
-- [x] 仪表盘数据实时更新
-- [x] 图表正确显示
-- [x] 截图缩略图展示
-- [x] 截图放大模态框
-- [x] 日志内容查看器
-- [x] 资源下载功能
-- [x] SSE 实时更新
-- [x] 无TypeScript类型错误
-
-## 🐛 故障排除
-
-### 问题：页面显示加载中
-**解决**：检查后端服务是否启动
-
-### 问题：请求返回401/403
-**解决**：检查CORS配置
-
-### 问题：字段名错误
-**解决**：确认使用snake_case而非camelCase
-
-### 问题：截图无法显示
-**解决**：检查 `screenshot_path` 是否为有效 URL，并确认 OSS 配置正确
-
-## 📞 支持
-
-如有问题，请参考：
-1. 验证指南：[VERIFICATION_GUIDE.md](VERIFICATION_GUIDE.md)
-2. API文档：`/doc/new_api.md`
-3. 测试报告：`/doc/api-test-results.md`
-4. 截图存储设计：`/doc/screenshot_storage_design.md`
-
----
-
-**状态**：✅ 已完成
-**最后更新**：2026-01-27 (新增截图和日志展示功能)
