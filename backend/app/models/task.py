@@ -31,6 +31,9 @@ class Task(Base):
     # 配置信息 (JSON 格式)
     config_json = Column(String(2000), nullable=True)
 
+    # ============ 备注字段 ============
+    remark = Column(String(1000), nullable=True)
+
     trigger_time = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

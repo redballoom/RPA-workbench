@@ -24,6 +24,7 @@ class TaskCreate(TaskBase):
     config_file_path: Optional[str] = Field(default=None, max_length=500, description="Config file OSS URL")
     config_json: Optional[str] = Field(default=None, max_length=2000, description="Config info JSON")
     trigger_time: Optional[datetime] = Field(default=None, description="Scheduled trigger time")
+    remark: Optional[str] = Field(default=None, max_length=1000, description="Task remark")
 
 
 class TaskUpdate(BaseModel):
@@ -39,6 +40,7 @@ class TaskUpdate(BaseModel):
     config_file_path: Optional[str] = Field(default=None, max_length=500)
     config_json: Optional[str] = Field(default=None, max_length=2000)
     trigger_time: Optional[datetime] = None
+    remark: Optional[str] = Field(default=None, max_length=1000)
 
 
 class TaskInDB(TaskBase):
@@ -51,6 +53,7 @@ class TaskInDB(TaskBase):
     config_file_path: Optional[str] = None
     config_json: Optional[str] = None
     trigger_time: Optional[datetime] = None
+    remark: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TerminalSquare, Play, Square, Search, Settings, FileText, Calendar, Plus, X, AlertCircle, Trash2, Loader2, Wifi, Zap } from "lucide-react";
+import { TerminalSquare, Play, Square, Search, Settings, FileText, Calendar, Plus, X, AlertCircle, Trash2, Loader2, Wifi, Zap, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { tasksApi, accountsApi, Task, Account, ApiError } from "../lib/api";
 import { useSSE, SSEEvent } from "../hooks/useSSE";
@@ -18,6 +18,7 @@ export default function TaskControl() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isRemarkModalOpen, setIsRemarkModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,6 +31,7 @@ export default function TaskControl() {
     config_info: false,
     config_file_path: "",
     config_json: "",
+    remark: "",
   });
 
   // 配置相关的额外状态
@@ -449,9 +451,39 @@ export default function TaskControl() {
       config_info: task.config_info,
       config_file_path: task.config_file_path || "",
       config_json: task.config_json || "",
+      remark: task.remark || "",
     });
     setConfigFileObj(null);  // 清空已选文件
     setIsEditModalOpen(true);
+  };
+
+  const openRemarkModal = (task: Task) => {
+    setSelectedTask(task);
+    setFormData(prev => ({ ...prev, remark: task.remark || "" }));
+    setIsRemarkModalOpen(true);
+  };
+
+  const handleSaveRemark = async () => {
+    if (!selectedTask) return;
+
+    try {
+      setSubmitting(true);
+      await tasksApi.updateTask(selectedTask.id, {
+        remark: formData.remark || undefined,
+      });
+      toast.success("备注保存成功");
+      setIsRemarkModalOpen(false);
+      loadTasks();
+    } catch (error) {
+      console.error('Failed to save remark:', error);
+      if (error instanceof ApiError) {
+        toast.error(`保存失败: ${error.message}`);
+      } else {
+        toast.error('保存备注失败');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const openDeleteModal = (task: Task) => {
@@ -469,6 +501,7 @@ export default function TaskControl() {
       config_info: false,
       config_file_path: "",
       config_json: "",
+      remark: "",
     });
     setConfigFileObj(null);
     setErrors({});
@@ -478,6 +511,7 @@ export default function TaskControl() {
     setIsAddModalOpen(false);
     setIsEditModalOpen(false);
     setIsDeleteModalOpen(false);
+    setIsRemarkModalOpen(false);
     setSelectedTask(null);
     resetForm();
   };
@@ -559,6 +593,9 @@ export default function TaskControl() {
                       配置
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      备注
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       操作
                     </th>
                   </tr>
@@ -610,6 +647,20 @@ export default function TaskControl() {
                               信息
                             </span>
                           )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-slate-700 dark:text-slate-300 truncate max-w-[150px]" title={task.remark || undefined}>
+                            {task.remark || '-'}
+                          </span>
+                          <button
+                            onClick={() => openRemarkModal(task)}
+                            className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                            title="编辑备注"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -1182,6 +1233,59 @@ export default function TaskControl() {
               >
                 {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 删除任务
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 备注编辑模态框 */}
+      {isRemarkModalOpen && selectedTask && (
+        <div className="fixed inset-0 bg-slate-900/50 dark:bg-slate-900/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg w-full max-w-md border border-slate-200 dark:border-slate-700">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">编辑备注</h3>
+              <button onClick={closeModals} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4 bg-slate-50 dark:bg-slate-700/30 p-3 rounded-lg">
+                <p className="text-sm text-slate-700 dark:text-slate-300">
+                  <span className="font-medium">任务:</span> {selectedTask.task_name}
+                </p>
+              </div>
+              <div>
+                <label htmlFor="remark" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  备注内容
+                </label>
+                <textarea
+                  id="remark"
+                  value={formData.remark}
+                  onChange={(e) => setFormData(prev => ({ ...prev, remark: e.target.value }))}
+                  placeholder="请输入任务备注..."
+                  className="w-full h-32 px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-sm"
+                />
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  最多可输入 1000 个字符
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-700 space-x-3">
+              <button
+                onClick={closeModals}
+                className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                disabled={submitting}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSaveRemark}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center"
+                disabled={submitting}
+              >
+                {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                保存
               </button>
             </div>
           </div>

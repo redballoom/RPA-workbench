@@ -49,6 +49,7 @@ export interface Task {
   config_file_path?: string | null;  // 配置文件 OSS URL
   config_json?: string | null;        // 配置信息 JSON
   trigger_time?: string | null;
+  remark?: string | null;             // 任务备注
   account_port?: number;  // 从关联账号获取的端口
   created_at: string;
   updated_at: string;
